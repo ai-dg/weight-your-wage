@@ -9,6 +9,7 @@ build: dirs
 	$(COMPOSE) build
 	$(COMPOSE) up -d --remove-orphans
 	@bash srcs/scripts/logs/log-finder.sh
+	@bash srcs/scripts/dependencies/dependencies_py.sh
 
 up: dirs
 	$(COMPOSE) up -d --remove-orphans
@@ -41,6 +42,8 @@ dirs:
 
 clean: down
 	$(COMPOSE) down -v
+
+
 
 
 fclean: clean

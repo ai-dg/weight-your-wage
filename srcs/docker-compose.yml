@@ -61,6 +61,9 @@ services:
       - 4243
     ports:
       - "4243:4243"
+    volumes:
+      - source_python:/usr/share/venv
+      - model:/usr/share/model/
 
   # ── Gateway ────────────────────────────────────────────────────────────────
   nginx:
@@ -118,12 +121,26 @@ volumes:
 
   mlflow-minio:
 
-  model:
+  model_artifacts:
     driver: local
     driver_opts:
       type: none
       o: bind
       device: ${PWD}/srcs/data/artifacts
+
+  model:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/srcs/model
+
+  source_python:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ../.venv
 
 networks:
   postgres_network:

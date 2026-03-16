@@ -3,3 +3,4 @@
 datasets/
 *.db
 .env
+.venv

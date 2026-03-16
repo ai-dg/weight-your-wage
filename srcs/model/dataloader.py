@@ -1,11 +1,16 @@
 import numpy as np
 import pandas as pd
-from torch.utils.data import DataLoader as DL, TensorDataset
+from torch.utils.data import DataLoader, TensorDataset
 import lightning as L
 from ydata_profiling import ProfileReport
-from sklearn.preprocessing import MultiLabelBinarizer, OrdinalEncoder, OneHotEncoder
+from sklearn.preprocessing import MultiLabelBinarizer, OrdinalEncoder, OneHotEncoder, StandardScaler, scale
 from category_encoders import TargetEncoder
+from archive.models.diego import dataloader
 from features_answer import get_features, get_features_answers
+from sklearn.model_selection import train_test_split 
+import joblib
+import lightning as L
+from torch import tensor, float32
 
 
 
@@ -24,6 +29,9 @@ class DataLoaderClass(L.LightningDataModule):
 			raise RuntimeError(f"Error : {e}")
 		
 		self.clean_data()
+		self.split_data()
+		self.normalize_by_standard()
+		# self.
 
 	######################################################################
 	##### 						CLEAN DATA							 #####
@@ -244,7 +252,81 @@ class DataLoaderClass(L.LightningDataModule):
 			encoder = TargetEncoder(cols=[feature], smoothing=10.0)
 			result = encoder.fit_transform(self.df[[feature]], self.df["CompTotalEuro"])
 			self.df[feature] = result[feature]	
-				
+
+
+	def split_data(self, ratio_test : float = 0.5, ratio_val : float = 0.2, seed : int = 42):
+		y = self.df.loc[:,"CompTotalEuro"]
+		X = self.df.drop("CompTotalEuro", axis=1)
+
+		X_split, X_test, y_split, y_test = train_test_split(X, y, random_state=seed, test_size=ratio_test, shuffle=True)
+
+		X_test.to_csv("./datasets/X_test.csv")
+		y_test.to_csv("./datasets/y_test.csv")
+
+		X_train, X_val, y_train, y_val = train_test_split(X_split, y_split, random_state=seed, test_size=ratio_val, shuffle=True)
+
+		self.X_train = X_train
+		self.X_val = X_val
+		self.y_train = y_train.to_frame()
+		self.y_val = y_val.to_frame()
+
+
+	
+	def normalize_by_standard(self):
+		scaler_x = StandardScaler()
+		scaler_y = StandardScaler()	
+
+		self.X_train_scaled = scaler_x.fit_transform(self.X_train)
+		self.X_val_scaled = scaler_x.transform(self.X_val)
+
+		self.y_train_scaled = scaler_y.fit_transform(self.y_train)
+		self.y_val_scaled = scaler_y.transform(self.y_val)
+
+
+		joblib.dump(scaler_x, "scaler_x.pkl")
+		joblib.dump(scaler_y, "scaler_y.pkl")
+
+	
+	def load_data_to_torch(self):
+
+		X_tensor_train = tensor(self.X_train_scaled, dtype=float32)
+		X_tensor_val = tensor(self.X_val_scaled, dtype=float32)
+
+		y_tensor_train = tensor(self.y_train_scaled, dtype=float32)
+		y_tensor_val = tensor(self.y_val_scaled, dtype=float32)
+
+
+		tensor_dataset_train = TensorDataset(X_tensor_train, y_tensor_train)
+		tensor_dataset_val = TensorDataset(X_tensor_val, y_tensor_val)
+
+		Train_loader = DataLoader(tensor_dataset_train, batch_size=32, shuffle=True)
+		Val_loader = DataLoader(tensor_dataset_val, batch_size=32)
+
+
+		return Train_loader, Val_loader
+
+		
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		
+
+
+		
+
+
+
 	 
 
 			
@@ -261,8 +343,8 @@ def main():
 	datapreprocess = DataLoaderClass("./datasets/survey_results_public.csv")
 	datapreprocess.df.to_csv("Temp.csv")
 
-	EDA = profile = ProfileReport(datapreprocess.df, title="Data (After Cleaning)")
-	profile.to_file("reports/data_analysis.html")
+	# EDA = profile = ProfileReport(datapreprocess.df, title="Data (After Cleaning)")
+	# profile.to_file("reports/data_analysis.html")
 
 if __name__ == "__main__":
 	main()
