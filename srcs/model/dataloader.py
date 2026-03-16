@@ -5,7 +5,6 @@ import lightning as L
 from ydata_profiling import ProfileReport
 from sklearn.preprocessing import MultiLabelBinarizer, OrdinalEncoder, OneHotEncoder, StandardScaler, scale
 from category_encoders import TargetEncoder
-from archive.models.diego import dataloader
 from features_answer import get_features, get_features_answers
 from sklearn.model_selection import train_test_split 
 import joblib
@@ -137,11 +136,11 @@ class DataLoaderClass(L.LightningDataModule):
 
 	def replace_nan_median(self, feature: str):
 		median = self.df[feature].median()
-		self.df[feature].fillna(median, inplace=True)
+		self.df[feature] = self.df[feature].fillna(median)
 
 	def replace_nan_frequent(self, feature: str):
 		most_frequent = self.df[feature].mode()[0]
-		self.df[feature].fillna(most_frequent, inplace=True)
+		self.df[feature] = self.df[feature].fillna(most_frequent)
 
 	######################################################################
 	##### 						ENCODING							 #####
@@ -179,7 +178,7 @@ class DataLoaderClass(L.LightningDataModule):
 	def binary_encoding(self, features: list[str]):
 		for feature in features:
 			#Replace NaN Value by False
-			self.df[feature].fillna(0, inplace=True)
+			self.df[feature] = self.df[feature].fillna(0)
 
 			self.df[feature] = self.df[feature].replace("Yes", 1)
 			self.df[feature] = self.df[feature].replace("No", 0)
@@ -254,12 +253,14 @@ class DataLoaderClass(L.LightningDataModule):
 			self.df[feature] = result[feature]	
 
 
-	def split_data(self, ratio_test : float = 0.5, ratio_val : float = 0.2, seed : int = 42):
+	def split_data(self, ratio_test : float = 0.1, ratio_val : float = 0.20, seed : int = 42):
 		y = self.df.loc[:,"CompTotalEuro"]
 		X = self.df.drop("CompTotalEuro", axis=1)
 
 		X_split, X_test, y_split, y_test = train_test_split(X, y, random_state=seed, test_size=ratio_test, shuffle=True)
 
+		self.X_test = X_test
+		self.y_test = y_test.to_frame()
 		X_test.to_csv("./datasets/X_test.csv")
 		y_test.to_csv("./datasets/y_test.csv")
 
@@ -276,60 +277,47 @@ class DataLoaderClass(L.LightningDataModule):
 		scaler_x = StandardScaler()
 		scaler_y = StandardScaler()	
 
+		self.y_train_log = np.log1p(self.y_train)
+		self.y_val_log = np.log1p(self.y_val)
+		self.y_test_log = np.log1p(self.y_test)
+
 		self.X_train_scaled = scaler_x.fit_transform(self.X_train)
 		self.X_val_scaled = scaler_x.transform(self.X_val)
-
-		self.y_train_scaled = scaler_y.fit_transform(self.y_train)
-		self.y_val_scaled = scaler_y.transform(self.y_val)
+		self.X_test_scaled = scaler_x.fit_transform(self.X_test)
 
 
-		joblib.dump(scaler_x, "scaler_x.pkl")
-		joblib.dump(scaler_y, "scaler_y.pkl")
+		self.y_train_scaled = scaler_y.fit_transform(self.y_train_log)
+		self.y_val_scaled = scaler_y.transform(self.y_val_log)
+		self.y_test_scaled = scaler_y.transform(self.y_test_log)
+
+
+		# joblib.dump(scaler_x, "scaler_x.pkl")
+		# joblib.dump(scaler_y, "scaler_y.pkl")
 
 	
 	def load_data_to_torch(self):
 
 		X_tensor_train = tensor(self.X_train_scaled, dtype=float32)
 		X_tensor_val = tensor(self.X_val_scaled, dtype=float32)
+		X_tensor_test = tensor(self.X_test_scaled, dtype=float32)
 
 		y_tensor_train = tensor(self.y_train_scaled, dtype=float32)
 		y_tensor_val = tensor(self.y_val_scaled, dtype=float32)
+		y_tensor_test = tensor(self.y_test_scaled, dtype=float32)
+
 
 
 		tensor_dataset_train = TensorDataset(X_tensor_train, y_tensor_train)
 		tensor_dataset_val = TensorDataset(X_tensor_val, y_tensor_val)
+		tensor_dataset_test = TensorDataset(X_tensor_test, y_tensor_test)
+
 
 		Train_loader = DataLoader(tensor_dataset_train, batch_size=32, shuffle=True)
 		Val_loader = DataLoader(tensor_dataset_val, batch_size=32)
+		Test_loader = DataLoader(tensor_dataset_test, batch_size=32)
 
 
-		return Train_loader, Val_loader
-
-		
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-		
-
-
-		
-
-
-
-	 
-
-			
+		return Train_loader, Val_loader, Test_loader			
 
 	def __str__(self):
 		resume = f"{self.df}"

@@ -6,9 +6,12 @@ readme = "README.md"
 requires-python = ">=3.10,<3.13"
 dependencies = [
 	"category-encoders>=2.8.1",
+	"fastapi>=0.135.1",
 	"lightning>=2.6.1",
+	"lovely-tensors>=0.1.22",
 	"pandas<3",
 	"scikit-learn>=1.7.2",
 	"setuptools<82.0.0",
+	"uvicorn>=0.42.0",
 	"ydata-profiling>=4.18.1",
 ]
