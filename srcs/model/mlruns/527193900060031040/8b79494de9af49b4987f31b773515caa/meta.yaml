@@ -1,0 +1,14 @@
+artifact_uri: file:///home/allan/Project/42AI_LAB/SalariOps/srcs/model/mlruns/527193900060031040/8b79494de9af49b4987f31b773515caa/artifacts
+end_time: null
+entry_point_name: ''
+experiment_id: '527193900060031040'
+lifecycle_stage: active
+run_id: 8b79494de9af49b4987f31b773515caa
+run_name: ResNet50_v4_LR_0.01
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1773765990191
+status: 1
+tags: []
+user_id: allan

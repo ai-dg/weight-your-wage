@@ -128,7 +128,7 @@ class DataLoaderClass(L.LightningDataModule):
 
 
 	######################################################################
-	##### 						UTILS							     #####
+	##### 						UTILS								 #####
 	######################################################################
 	def drop_features(self, features:list[str]):
 		self.df.drop(columns=features, inplace=True)

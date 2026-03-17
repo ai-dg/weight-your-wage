@@ -1,0 +1,14 @@
+artifact_uri: file:///home/allan/Project/42AI_LAB/SalariOps/srcs/model/mlruns/527193900060031040/9241f6db87f140f0a6092b63e4cd7a51/artifacts
+end_time: 1773767227163
+entry_point_name: ''
+experiment_id: '527193900060031040'
+lifecycle_stage: active
+run_id: 9241f6db87f140f0a6092b63e4cd7a51
+run_name: whimsical-fish-253
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1773767123884
+status: 3
+tags: []
+user_id: allan
