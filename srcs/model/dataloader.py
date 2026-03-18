@@ -5,7 +5,7 @@ import lightning as L
 from ydata_profiling import ProfileReport
 from sklearn.preprocessing import MultiLabelBinarizer, OrdinalEncoder, OneHotEncoder, StandardScaler, scale
 from category_encoders import TargetEncoder
-from features_answer import get_features, get_features_answers
+from model.features_answer import get_features, get_features_answers
 from sklearn.model_selection import train_test_split 
 import joblib
 import lightning as L

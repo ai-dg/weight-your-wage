@@ -6,10 +6,20 @@ DATA_DIRS = srcs/data/postgres srcs/data/postgres_mlflow srcs/data/minio srcs/da
 .PHONY: build up down downv logs stop start clean fclean dirs
 
 build: dirs
+	sudo chmod 777 -R ./*
+	sudo chown -R $$(whoami):$$(whoami) .venv 2>/dev/null || true
+	@bash srcs/scripts/dependencies/dependencies_py.sh
 	$(COMPOSE) build
 	$(COMPOSE) up -d --remove-orphans
 	@bash srcs/scripts/logs/log-finder.sh
+
+re: clean
+	sudo chmod 777 -R ./*
+	sudo chown -R $$(whoami):$$(whoami) .venv 2>/dev/null || true
 	@bash srcs/scripts/dependencies/dependencies_py.sh
+	$(COMPOSE) build
+	$(COMPOSE) up -d --remove-orphans
+	@bash srcs/scripts/logs/log-finder.sh
 
 up: dirs
 	$(COMPOSE) up -d --remove-orphans

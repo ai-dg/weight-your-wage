@@ -1,25 +1,17 @@
 import fastapi
-# from model import LitSalaryPredict
-
 from fastapi import FastAPI
-
-
-def test():
-
-	message = "Hello"
-
-	numero = 100
-
-
-	return { numero : message }
 
 
 def main():
 	app = FastAPI()
-
 	app.include_router(fastapi.APIRouter())
 	app.get("/")(lambda: {"message": "Hello World"})
-	app.post("/predict")(lambda: test())
+
+	# Import lourd uniquement pour /train
+	@app.post("/train")
+	def train():
+		from model.train import GeneralTrainer
+		return GeneralTrainer()
 
 	return app
 

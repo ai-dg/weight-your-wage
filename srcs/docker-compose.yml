@@ -7,7 +7,8 @@ services:
       - "${GRAFANA_PORT:-3000}:3000"
     volumes:
       - model:/usr/share/model/
-
+    networks:
+      - model_network
   # ── MinIO (Data Lake & Artifacts) ──────────────────────────────────────────
   minio:
     container_name: minio
@@ -55,15 +56,18 @@ services:
   fastapi:
     container_name: fastapi
     build:
-      context: ./api
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: srcs/api/Dockerfile
     expose:
       - 4243
     ports:
-      - "4243:4243"
+      - "0.0.0.0:4243:4243"
     volumes:
-      - source_python:/usr/share/venv
-      - model:/usr/share/model/
+      - source_python:/app/.venv
+      - model:/app/model/
+
+    networks:
+      - model_network
 
   # ── Gateway ────────────────────────────────────────────────────────────────
   nginx:
@@ -83,7 +87,7 @@ services:
       POSTGRES_DB: ${DB_NAME}
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -140,8 +144,10 @@ volumes:
     driver_opts:
       type: none
       o: bind
-      device: ../.venv
+      device: ${PWD}/.venv
 
 networks:
   postgres_network:
+    driver: bridge
+  model_network:
     driver: bridge
