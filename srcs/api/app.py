@@ -1,5 +1,5 @@
 import fastapi
-from fastapi import FastAPI
+from fastapi import FastAPI, BackgroundTasks
 
 
 def main():
@@ -7,11 +7,33 @@ def main():
 	app.include_router(fastapi.APIRouter())
 	app.get("/")(lambda: {"message": "Hello World"})
 
-	# Import lourd uniquement pour /train
+	def _run_training():
+		import sys
+		import logging
+		sys.stdout.reconfigure(line_buffering=True) if hasattr(sys.stdout, "reconfigure") else None
+		sys.stderr.reconfigure(line_buffering=True) if hasattr(sys.stderr, "reconfigure") else None
+		logging.basicConfig(level=logging.INFO, format="%(message)s", stream=sys.stdout, force=True)
+		for name in ("lightning", "pytorch_lightning", "model"):
+			logging.getLogger(name).setLevel(logging.INFO)
+			for h in logging.getLogger(name).handlers:
+				h.setStream(sys.stdout)
+		print("[train] Démarrage de l'entraînement...", flush=True)
+		try:
+			from model.train import GeneralTrainer
+			GeneralTrainer()
+			print("[train] Entraînement terminé.", flush=True)
+		except Exception as e:
+			print(f"[train] Erreur: {e}", flush=True)
+			import traceback
+			traceback.print_exc()
+		finally:
+			sys.stdout.flush()
+			sys.stderr.flush()
+
 	@app.post("/train")
-	def train():
-		from model.train import GeneralTrainer
-		return GeneralTrainer()
+	def train(background_tasks: BackgroundTasks):
+		background_tasks.add_task(_run_training)
+		return {"status": "training started", "message": "L'entraînement tourne en arrière-plan."}
 
 	return app
 

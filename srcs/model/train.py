@@ -34,11 +34,13 @@ def GeneralTrainer():
 
 	salary_model = SalaryModel(len(data.X_train.columns))
 
-	trainer = L.Trainer(max_epochs=10, logger=mlf_logger, accelerator="cpu")
+	trainer = L.Trainer(max_epochs=10, logger=mlf_logger, accelerator="cpu", enable_progress_bar=False)
 
 	trainer.fit(model=salary_model, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader)
+	import sys
 	for name, params in salary_model.named_parameters():
-		print(f"name : {name} \n params : {params}")
+		print(f"name : {name} \n params : {params}", flush=True)
+	sys.stdout.flush()
 
 """ 	with mlflow.start_run(run_id=mlf_logger.run_id):
 		mlflow.log_artifact("mlrun_artifact.txt") """
