@@ -1,5 +1,8 @@
--- Création de l'utilisateur pour MLflow
-CREATE USER mlflow WITH PASSWORD 'mlflow';
+-- Create the user for MLflow
+CREATE USER mlflow_user WITH PASSWORD 'mlflow_password';
 
--- Création de la base de données appartenant à cet utilisateur
-CREATE DATABASE mlflowdb OWNER mlflow;
+-- Create the database for MLflow
+CREATE DATABASE mlflow_db OWNER mlflow_user;
+
+-- Give the user permissions
+GRANT ALL PRIVILEGES ON DATABASE mlflow_db TO mlflow_user;

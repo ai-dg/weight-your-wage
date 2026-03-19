@@ -1,5 +1,5 @@
 import fastapi
-# from model import LitSalaryPredict
+# from model import SalaryModel
 
 from fastapi import FastAPI
 

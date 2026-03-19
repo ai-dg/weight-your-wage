@@ -1,7 +1,0 @@
-artifact_location: file:///home/allan/Project/42AI_LAB/SalariOps/srcs/model/mlruns/594408531592829284
-creation_time: 1773765956617
-experiment_id: '594408531592829284'
-last_update_time: 1773765956617
-lifecycle_stage: active
-name: Production_Fraud_Detection
-workspace: default
