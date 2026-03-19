@@ -10,7 +10,7 @@
 # lt.monkey_patch()
 # def main():
 #	 # train the model (hint: here are some helpful Trainer arguments for rapid idea iteration)
-#	 data = DataLoaderClass("./datasets/survey_results_public.csv")
+#	 data = DataLoaderClass("./srcs/model/datasets/survey_results_public.csv")
 #	 salary_model = SalaryModel(len(data.X_train.columns))
 #	 logger = [CSVLogger("./logs")]
 #	 callback = [ModelCheckpoint("./logs", verbose=True)] #, EarlyStopping('val_loss', mode="min",patience=5)

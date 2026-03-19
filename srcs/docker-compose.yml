@@ -5,6 +5,7 @@ services:
     image: grafana/grafana:latest
     ports:
       - "${GRAFANA_PORT:-3000}:3000"
+    user: "${UID}:${GID}"
     volumes:
       - model:/usr/share/model/
     networks:
@@ -19,6 +20,7 @@ services:
     command: server /data
     ports:
       - "9000:9000"
+    user: "${UID}:${GID}"
     volumes:
       - mlflow-minio:/data
     networks:
@@ -33,6 +35,8 @@ services:
     image: ghcr.io/mlflow/mlflow:v2.17.0
     ports:
       - "${MLFLOW_SERVER_PORT:-5000}:5000"
+    expose:
+      - 5000
     environment:
       MLFLOW_SERVER_HOST: 0.0.0.0
       MLFLOW_SERVER_PORT: 5000
@@ -59,6 +63,7 @@ services:
         condition: service_started
     networks:
       - postgres_network
+      - model_network
 
   # ── API ────────────────────────────────────────────────────────────────────
   fastapi:
@@ -70,6 +75,7 @@ services:
       - 4243
     ports:
       - "0.0.0.0:4243:4243"
+    #user: "${UID}:${GID}"
     volumes:
       - source_python:/app/.venv
       - model:/app/model/
@@ -96,6 +102,7 @@ services:
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
       - "5433:5432"
+    user: "${UID}:${GID}"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql

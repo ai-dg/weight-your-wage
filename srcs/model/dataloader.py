@@ -100,7 +100,7 @@ class DataLoaderClass(L.LightningDataModule):
 		# Use float64 limit as a ceiling
 		FLOAT_MAX = np.finfo(np.float64).max
 
-		currency_table  = pd.read_csv("./datasets/currecy_2025.csv")
+		currency_table  = pd.read_csv("./model/datasets/currecy_2025.csv")
 
 		# Convert CompTotalEuro with its attached currency
 		series_rate = currency_table.set_index("currency")['Value']
@@ -119,7 +119,7 @@ class DataLoaderClass(L.LightningDataModule):
 		mask = (self.df["CompTotalEuro"] >= Salary_min) & (self.df["CompTotalEuro"] <= Salary_max)
 		self.df = self.df[mask].copy()
 
-		self.df.to_csv("./datasets/result_clean.csv")
+		self.df.to_csv("./model/datasets/result_clean.csv")
 		
 		# Delete the features Currency and CompTotal
 		self.drop_features(["Currency", "CompTotal"])
@@ -260,8 +260,8 @@ class DataLoaderClass(L.LightningDataModule):
 
 		self.X_test = X_test
 		self.y_test = y_test.to_frame()
-		X_test.to_csv("./datasets/X_test.csv")
-		y_test.to_csv("./datasets/y_test.csv")
+		X_test.to_csv("./model/datasets/X_test.csv")
+		y_test.to_csv(".model/datasets/y_test.csv")
 
 		X_train, X_val, y_train, y_val = train_test_split(X_split, y_split, random_state=seed, test_size=ratio_val, shuffle=True)
 
@@ -327,7 +327,7 @@ class DataLoaderClass(L.LightningDataModule):
 	
 
 def main():
-	datapreprocess = DataLoaderClass("./datasets/survey_results_public.csv")
+	datapreprocess = DataLoaderClass("./model/datasets/survey_results_public.csv")
 	datapreprocess.df.to_csv("Temp.csv")
 
 	# EDA = profile = ProfileReport(datapreprocess.df, title="Data (After Cleaning)")

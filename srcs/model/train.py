@@ -1,6 +1,6 @@
 from gc import callbacks
 
-from model import SalaryModel
+from model.salary_model import SalaryModel
 from model.dataloader import DataLoaderClass
 import lightning as L
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping, LearningRateMonitor, ModelSummary, LearningRateFinder
@@ -10,7 +10,7 @@ import lovely_tensors as lt
 
 lt.monkey_patch()
 
-mlflow.set_tracking_uri("http://localhost:4244")
+mlflow.set_tracking_uri("http://localhost:5000")
 mlflow.set_experiment("SalariOps")
 
 
@@ -20,12 +20,12 @@ def GeneralTrainer():
 	mlflow.end_run()
 
 	#Import Data turn it into tensors
-	data = DataLoaderClass("./datasets/survey_results_public.csv")
+	data = DataLoaderClass("./model/datasets/survey_results_public.csv")
 	train_dataloader, val_dataloader, test_dataloader = data.load_data_to_torch()
 
 	#Setup Logger
 	mlf_logger = MLFlowLogger(
-		tracking_uri="http://localhost:4244",
+		tracking_uri="http://localhost:5000",
 		experiment_name="SalariOps"
 	)
 
