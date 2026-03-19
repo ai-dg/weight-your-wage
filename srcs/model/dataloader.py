@@ -12,7 +12,6 @@ import lightning as L
 from torch import tensor, float32
 
 
-
 def erase_str(value :str):
 	return value[:3]
 

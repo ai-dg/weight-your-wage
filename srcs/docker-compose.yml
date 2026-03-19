@@ -22,11 +22,14 @@ services:
     volumes:
       - mlflow-minio:/data
     networks:
-      - postgres_network # Ajouté pour que MLflow puisse le voir
+      - postgres_network
 
   # ── Metrics (MLflow) ───────────────────────────────────────────────────────
   mlflow:
     container_name: mlflow-server
+    build:
+      context: ./services/mlflow
+      dockerfile: Dockerfile
     image: ghcr.io/mlflow/mlflow:v2.17.0
     ports:
       - "${MLFLOW_SERVER_PORT:-5000}:5000"
@@ -38,11 +41,16 @@ services:
       AWS_ACCESS_KEY_ID: minioadmin
       AWS_SECRET_ACCESS_KEY: minioadmin
       MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+
+      MLFLOW_USER: ${DB_MLFLOW_USER}
+      MLFLOW_PASSWORD: ${DB_MLFLOW_PASSWORD}
+      MLFLOW_DB: ${DB_MLFLOW_NAME}
+      
     command: >
-      mlflow server
-      --backend-store-uri postgresql+psycopg2://mlflow:mlflow@postgres_mlflow:5432/mlflowdb
+      mlflow server 
+      --backend-store-uri postgresql://${DB_MLFLOW_USER}:${DB_MLFLOW_PASSWORD}@postgres:5432/${DB_MLFLOW_NAME}
       --default-artifact-root s3://mlflow-artifacts
-      --host 0.0.0.0
+      --host 0.0.0.0 
       --port 5000
     depends_on:
       postgres:
@@ -98,10 +106,10 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-    
+  
   pgadmin:
     image: dpage/pgadmin4
-    container_name: pgadmin_container
+    container_name: pgadmin_contain
     restart: always
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
@@ -122,23 +130,19 @@ services:
 
 volumes:
   postgres_data:
-
   mlflow-minio:
-
   model_artifacts:
     driver: local
     driver_opts:
       type: none
       o: bind
       device: ${PWD}/srcs/data/artifacts
-
   model:
     driver: local
     driver_opts:
       type: none
       o: bind
       device: ${PWD}/srcs/model
-
   source_python:
     driver: local
     driver_opts:

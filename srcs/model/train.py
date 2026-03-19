@@ -25,8 +25,8 @@ def GeneralTrainer():
 
 	#Setup Logger
 	mlf_logger = MLFlowLogger(
-		experiment_name="SalariOps",
-		tracking_uri="file:./mlruns"
+		tracking_uri="http://localhost:4244",
+		experiment_name="SalariOps"
 	)
 
 	#Setup Autologging

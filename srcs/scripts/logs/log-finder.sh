@@ -8,12 +8,12 @@ rm -rf ./srcs/logs/*
 
 SERVICES=(
   grafana
-  postgres_mlflow
   minio
-  mlflow
+  mlflow-server
   fastapi
   nginx
-  postgres
+  postgres_db
+  pgadmin_contain
 )
 
 for service in "${SERVICES[@]}"; do

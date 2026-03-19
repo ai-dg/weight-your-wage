@@ -1,7 +1,7 @@
 COMPOSE_FILE = srcs/docker-compose.yml
 COMPOSE = docker compose -f $(COMPOSE_FILE)
 
-DATA_DIRS = srcs/data/postgres srcs/data/postgres_mlflow srcs/data/minio srcs/data/artifacts
+DATA_DIRS = srcs/data/postgres srcs/data/postgres_mlflow srcs/data/minio srcs/data/artifacts srcs/logs
 
 .PHONY: build up down downv logs stop start clean fclean dirs
 
@@ -20,6 +20,13 @@ re: clean
 	$(COMPOSE) build
 	$(COMPOSE) up -d --remove-orphans
 	@bash srcs/scripts/logs/log-finder.sh
+
+re: fclean
+	$(MAKE) dirs
+	$(COMPOSE) build
+	$(COMPOSE) up -d --remove-orphans
+	@bash srcs/scripts/logs/log-finder.sh
+	@bash srcs/scripts/dependencies/dependencies_py.sh
 
 up: dirs
 	$(COMPOSE) up -d --remove-orphans
