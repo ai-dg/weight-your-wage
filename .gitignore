@@ -1,6 +1,8 @@
-/srcs/logs/
+srcs/logs/
 *.csv
 datasets/
 *.db
 .env
 .venv
+srcs/data
+__pycache__

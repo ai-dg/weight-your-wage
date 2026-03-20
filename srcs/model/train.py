@@ -8,9 +8,12 @@ from lightning.pytorch.loggers import CSVLogger, MLFlowLogger
 import mlflow
 import lovely_tensors as lt
 
+
+MLFLOW_URI = "http://mlflow-server:5000"
+
 lt.monkey_patch()
 
-mlflow.set_tracking_uri("http://localhost:5000")
+mlflow.set_tracking_uri(MLFLOW_URI)
 mlflow.set_experiment("SalariOps")
 
 
@@ -25,7 +28,7 @@ def GeneralTrainer():
 
 	#Setup Logger
 	mlf_logger = MLFlowLogger(
-		tracking_uri="http://localhost:5000",
+		tracking_uri=MLFLOW_URI,
 		experiment_name="SalariOps"
 	)
 
