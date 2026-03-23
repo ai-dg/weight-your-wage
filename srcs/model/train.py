@@ -1,7 +1,7 @@
 from gc import callbacks
 
 from model.salary_model import SalaryModel
-from model.dataloader import DataLoaderClass
+from srcs.model.base_preprocessor import DataLoaderClass
 import lightning as L
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping, LearningRateMonitor, ModelSummary, LearningRateFinder
 from lightning.pytorch.loggers import CSVLogger, MLFlowLogger
@@ -35,7 +35,7 @@ def GeneralTrainer():
 	#Setup Autologging
 	mlflow.pytorch.autolog()
 
-	salary_model = SalaryModel(len(data.X_train.columns))
+	salary_model = SalaryModel(nb_features=len(data.X_train.columns))
 
 	trainer = L.Trainer(max_epochs=10, logger=mlf_logger, accelerator="cpu", enable_progress_bar=False)
 
