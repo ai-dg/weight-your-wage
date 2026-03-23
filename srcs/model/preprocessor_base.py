@@ -14,50 +14,13 @@ from abc import ABC, abstractmethod
 
 
 class BasePreprocessor(L.LightningDataModule, ABC):
-	need_numerical_encoding = ["WorkExp", "YearsCode"]
-
-	need_binary_encoding = [
-							"LanguageChoice",
-							"DatabaseChoice",
-							"PlatformChoice",
-							"WebframeChoice",
-							"DevEnvsChoice",
-							"AIModelsChoice"
-							]
-
-	#Ordinal Encode every Nominal Features by order of importance
-	need_ordinal_encoding = ["EdLevel", "AISelect"]
-
-	#One hot encode every Nominal Features with no order importance
-	need_hot_encoding = [
-						"MainBranch",
-						"Age",
-						"Employment",
-						"DevType",
-						"OrgSize",
-						"ICorPM",
-						"RemoteWork",
-						"Industry",
-						"AIAgents",
-						"LearnCodeAI"
-						]
-
-	need_multi_label_encoding = [
-								"LearnCode",
-								"LanguageHaveWorkedWith",
-								"DatabaseHaveWorkedWith",
-								"PlatformHaveWorkedWith",
-								"WebframeHaveWorkedWith",
-								"DevEnvsHaveWorkedWith"
-								]
-	
-	need_target_encoding = ["Country"]
-
 	def __init__(self, path):
 		super().__init__()
 		try :
 			self.df = pd.read_csv(path)
 			self.features = get_features()
+			self.df = self.df[self.features].copy()
+			self.preprocess_state = {}
 		except Exception as e :
 			print(f"Error : {e}")
 			raise RuntimeError(f"Error : {e}")
@@ -70,25 +33,51 @@ class BasePreprocessor(L.LightningDataModule, ABC):
 	##### 						CLEAN DATA							 #####
 	######################################################################
 	def clean_data(self):
-		self.df = self.df[self.features].copy()
+		need_numerical_encoding = ["WorkExp", "YearsCode"]
 
-		#Clean Currency
-		self.df = self.df.dropna(subset="CompTotal")
-		# /!\ handle when df is empty
+		need_binary_encoding = [
+								"LanguageChoice",
+								"DatabaseChoice",
+								"PlatformChoice",
+								"WebframeChoice",
+								"DevEnvsChoice",
+								"AIModelsChoice"
+								]
 
-		self.df.loc[:, "Currency"] = self.df["Currency"].apply(self.erase_str)
-		self.update_currency()
+		#Ordinal Encode every Nominal Features by order of importance
+		need_ordinal_encoding = ["EdLevel", "AISelect"]
 
-		self.numerical_encoding(self.need_numerical_encoding)
-		self.binary_encoding(self.need_binary_encoding)
-		self.ordinal_encoding(self.need_ordinal_encoding)
-		self.one_hot_encoding(self.need_hot_encoding)
-		self.multi_label_encoding(self.need_multi_label_encoding)
-		self.target_encoding(self.need_target_encoding)
+		#One hot encode every Nominal Features with no order importance
+		need_hot_encoding = [
+							"MainBranch",
+							"Age",
+							"Employment",
+							"DevType",
+							"OrgSize",
+							"ICorPM",
+							"RemoteWork",
+							"Industry",
+							"AIAgents",
+							"LearnCodeAI"
+							]
 
-	@abstractmethod
-	def update_currency(self):
-		pass
+		need_multi_label_encoding = [
+									"LearnCode",
+									"LanguageHaveWorkedWith",
+									"DatabaseHaveWorkedWith",
+									"PlatformHaveWorkedWith",
+									"WebframeHaveWorkedWith",
+									"DevEnvsHaveWorkedWith"
+									]
+		
+		need_target_encoding = ["Country"]
+
+		self.numerical_encoding(need_numerical_encoding)
+		self.binary_encoding(need_binary_encoding)
+		self.ordinal_encoding(need_ordinal_encoding)
+		self.one_hot_encoding(need_hot_encoding)
+		self.multi_label_encoding(need_multi_label_encoding)
+		self.target_encoding(need_target_encoding)
 
 	######################################################################
 	##### 						UTILS								 #####

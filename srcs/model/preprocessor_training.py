@@ -14,12 +14,22 @@ from model.preprocessor_base import BasePreprocessor
 
 
 class TrainingPreprocessor(BasePreprocessor):
+	def __init__(self, path):
+		super().__init__(path)
+		#Clean Currency
+		self.df = self.df.dropna(subset="CompTotal")
+		# /!\ handle when df is empty
+
+		self.df.loc[:, "Currency"] = self.df["Currency"].apply(self.erase_str)
+		self.update_currency()
+
+
 	def run_pipeline(self):
 		self.clean_data()
 		self.split_data()
 		self.normalize_by_standard()
 		# self.
-
+	
 	def update_currency(self):
 		"""
 			Convert CompTotal to Euro, then drop CompTotal and Currency features.
@@ -66,7 +76,7 @@ class TrainingPreprocessor(BasePreprocessor):
 	def replace_nan_median(self, feature: str):
 		median = self.df[feature].median()
 		self.df[feature] = self.df[feature].fillna(median)
-		# don't forget to save medians
+		return median
 
 	def replace_nan_frequent(self, feature: str):
 		most_frequent = self.df[feature].mode()[0]
@@ -82,7 +92,7 @@ class TrainingPreprocessor(BasePreprocessor):
 		for feature in features:
 
 			#For Numerical Encoding replace NaN with most median value
-			self.replace_nan_median(feature)
+			self.preprocess_state[feature]['median'] = self.replace_nan_median(feature)
 
 	def ordinal_encoding(self, initial_features: list[str]):
 		for feature in initial_features:
