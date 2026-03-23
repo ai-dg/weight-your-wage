@@ -38,7 +38,8 @@ class InferencePreprocessor(BasePreprocessor):
 		
 	
 	def replace_nan_frequent(self, feature):
-		return super().replace_nan_frequent(feature)
+		most_frequent = self.preprocess_state[feature]['most_frequent']
+		self.df[feature] = self.df[feature].fillna(most_frequent)
 	
 	
 	######################################################################
@@ -50,7 +51,16 @@ class InferencePreprocessor(BasePreprocessor):
 			self.replace_nan_median(feature)
 	
 	def ordinal_encoding(self, initial_features):
-		return super().ordinal_encoding(initial_features)
+		for feature in initial_features:
+			nan_strategy = self.preprocess_state[feature]['nan_strategy']
+			if nan_strategy == 'placeholder':
+				placeholder =  self.preprocess_state[feature]['placeholder']
+				self.df[feature] = self.df[feature].fillna(placeholder)
+			elif nan_strategy == 'most_frequent':
+				self.replace_nan_frequent(feature)
+
+			encoder = self.preprocess_state[feature]['encoder']
+			self.df[feature] = encoder.fit_transform(self.df[[feature]])
 	
 	def one_hot_encoding(self, initial_features):
 		return super().one_hot_encoding(initial_features)
