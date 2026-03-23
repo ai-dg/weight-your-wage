@@ -81,7 +81,7 @@ class TrainingPreprocessor(BasePreprocessor):
 	def replace_nan_frequent(self, feature: str):
 		most_frequent = self.df[feature].mode()[0]
 		self.df[feature] = self.df[feature].fillna(most_frequent)
-		# don't forget to save most_frequent
+		return most_frequent
 
 	######################################################################
 	##### 						ENCODING							 #####
@@ -107,14 +107,18 @@ class TrainingPreprocessor(BasePreprocessor):
 
 				if placeholder not in valid_answers:
 					valid_answers = [placeholder] + valid_answers
+				self.preprocess_state[feature]['nan_strategy'] = "placeholder"
+				self.preprocess_state[feature]['placeholder'] = placeholder
 			else:	
-				self.replace_nan_frequent(feature)
+				self.preprocess_state[feature]['nan_strategy'] = "most_frequent"
+				self.preprocess_state[feature]['most_frequent'] = self.replace_nan_frequent(feature)
 
 			encoder = OrdinalEncoder(categories=[valid_answers],
 							handle_unknown='use_encoded_value',
 							unknown_value=-1)
-
 			self.df[feature] = encoder.fit_transform(self.df[[feature]])
+
+			self.preprocess_state[feature]['encoder'] = encoder
 
 	def one_hot_encoding(self, initial_features: list[str]):
 		for feature in initial_features:
