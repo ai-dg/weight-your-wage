@@ -1,5 +1,6 @@
 import fastapi
 from fastapi import FastAPI, BackgroundTasks
+from fastapi import Request
 
 
 def main():
@@ -34,6 +35,24 @@ def main():
 	def train(background_tasks: BackgroundTasks):
 		background_tasks.add_task(_run_training)
 		return {"status": "training started", "message": "L'entraînement tourne en arrière-plan."}
+
+	@app.post("/predict")
+	async def predict(request: Request):
+		"""POST JSON aligné sur le formulaire / modèle. Ne renvoie pas l’objet Request (non JSON-serializable)."""
+		body = None
+		try:
+			body = await request.json()
+		except Exception as exc:
+			print(f"[predict] corps JSON invalide ou vide: {exc}", flush=True)
+		else:
+			if isinstance(body, dict):
+				print(f"[predict] reçu {len(body)} champs: {list(body.keys())}", flush=True)
+			else:
+				print(f"[predict] reçu type={type(body).__name__}", flush=True)
+		return {
+			"message": "prediction started",
+			"received": body,
+		}
 
 	return app
 

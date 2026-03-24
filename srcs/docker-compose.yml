@@ -135,6 +135,34 @@ services:
       context: ./services/streamlite
       dockerfile: Dockerfile
 
+  frontend:
+    profiles: ["dev"]
+    container_name: frontend
+    build:
+      context: ./services/frontend
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    command: sh -c "npm install && npm run dev:docker"
+    environment:
+      FASTAPI_INTERNAL_URL: http://fastapi:4243
+      PREDICT_PATH: /predict
+      NEXT_PUBLIC_PREDICT_URL: /api/predict
+      NEXT_PUBLIC_WRANGLER_PORT: ${WRANGLER_PORT:-8788}
+      PORT: ${FRONTEND_INTERNAL_PORT:-3001}
+      WRANGLER_INTERNAL_PORT: ${WRANGLER_INTERNAL_PORT:-8788}
+    volumes:
+      - ./services/frontend:/app
+      - frontend_node_modules:/app/node_modules
+      - ./services/frontend/cf-dev-vars.docker:/app/.dev.vars:ro
+    ports:
+      - "${FRONTEND_PORT:-3001}:${FRONTEND_INTERNAL_PORT:-3001}"
+      - "${WRANGLER_PORT:-8788}:${WRANGLER_INTERNAL_PORT:-8788}"
+    depends_on:
+      - fastapi
+    networks:
+      - model_network
+
 volumes:
   postgres_data:
   mlflow-minio:
@@ -156,6 +184,7 @@ volumes:
       type: none
       o: bind
       device: ${PWD}/.venv
+  frontend_node_modules:
 
 networks:
   postgres_network:

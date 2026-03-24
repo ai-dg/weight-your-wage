@@ -1,0 +1,214 @@
+.
+├── 1
+│   ├── 46eaddcb547a471699317bc2fc8e48a0
+│   │   └── checkpoints
+│   │       └── epoch=9-step=5200.ckpt
+│   ├── 689ce61642da4665b45e8d8ec51a79b1
+│   │   └── checkpoints
+│   │       └── epoch=9-step=5200.ckpt
+│   ├── a23eb262b4e64d0c865b79a86f30cb72
+│   │   └── checkpoints
+│   │       └── epoch=9-step=5200.ckpt
+│   └── f7325782ed28437196509f6be7947c6b
+│       └── checkpoints
+│           └── epoch=9-step=5200.ckpt
+├── Makefile
+├── pyproject.toml
+├── README.md
+├── srcs
+│   ├── api
+│   │   ├── app.py
+│   │   ├── Dockerfile
+│   │   └── entrypoint.sh
+│   ├── data
+│   │   └── mlflow
+│   ├── docker-compose.yml
+│   ├── frontend
+│   ├── init.sql
+│   ├── model
+│   │   ├── 1
+│   │   │   └── cf43dec08ac547f0b7b320707406a04a
+│   │   │       └── checkpoints
+│   │   │           └── epoch=9-step=5200.ckpt
+│   │   ├── dataloader.py
+│   │   ├── datasets
+│   │   │   ├── 2025 Developer Survey Tool.pdf
+│   │   │   ├── currecy_2025.csv
+│   │   │   ├── features_name.csv
+│   │   │   ├── result_clean.csv
+│   │   │   ├── survey_results_public.csv
+│   │   │   ├── survey_results_schema.csv
+│   │   │   ├── X_test.csv
+│   │   │   └── y_test.csv
+│   │   ├── dl_dataset.py
+│   │   ├── features_answer.py
+│   │   ├── __init__.py
+│   │   ├── lightning_logs
+│   │   │   └── version_0
+│   │   │       ├── checkpoints
+│   │   │       │   └── epoch=9-step=1000.ckpt
+│   │   │       └── metrics.csv
+│   │   ├── logs
+│   │   │   ├── epoch=29-step=15600.ckpt
+│   │   │   ├── epoch=29-step=15600-v1.ckpt
+│   │   │   ├── epoch=29-step=15600-v2.ckpt
+│   │   │   ├── epoch=29-step=15600-v3.ckpt
+│   │   │   ├── epoch=29-step=1740.ckpt
+│   │   │   ├── epoch=29-step=3000.ckpt
+│   │   │   ├── epoch=99-step=10000.ckpt
+│   │   │   ├── epoch=99-step=10000-v1.ckpt
+│   │   │   ├── epoch=99-step=10000-v2.ckpt
+│   │   │   ├── epoch=9-step=1000.ckpt
+│   │   │   ├── epoch=9-step=1000-v1.ckpt
+│   │   │   ├── epoch=9-step=1000-v2.ckpt
+│   │   │   ├── epoch=9-step=1000-v3.ckpt
+│   │   │   ├── epoch=9-step=1000-v4.ckpt
+│   │   │   ├── epoch=9-step=1000-v5.ckpt
+│   │   │   ├── epoch=9-step=1000-v6.ckpt
+│   │   │   ├── epoch=9-step=5200.ckpt
+│   │   │   ├── epoch=9-step=5200-v1.ckpt
+│   │   │   ├── epoch=9-step=5200-v2.ckpt
+│   │   │   ├── epoch=9-step=5200-v3.ckpt
+│   │   │   ├── epoch=9-step=5200-v4.ckpt
+│   │   │   └── lightning_logs
+│   │   │       ├── version_0
+│   │   │       │   └── metrics.csv
+│   │   │       ├── version_1
+│   │   │       │   └── metrics.csv
+│   │   │       ├── version_10
+│   │   │       │   └── metrics.csv
+│   │   │       ├── version_11
+│   │   │       ├── version_12
+│   │   │       ├── version_13
+│   │   │       ├── version_14
+│   │   │       ├── version_15
+│   │   │       ├── version_16
+│   │   │       ├── version_17
+│   │   │       │   └── metrics.csv
+│   │   │       ├── version_18
+│   │   │       │   └── metrics.csv
+│   │   │       ├── version_19
+│   │   │       │   └── metrics.csv
+│   │   │       ├── version_2
+│   │   │       │   └── metrics.csv
+│   │   │       ├── version_20
+│   │   │       │   └── metrics.csv
+│   │   │       ├── version_21
+│   │   │       │   └── metrics.csv
+│   │   │       ├── version_22
+│   │   │       │   └── metrics.csv
+│   │   │       ├── version_23
+│   │   │       │   └── metrics.csv
+│   │   │       ├── version_24
+│   │   │       ├── version_25
+│   │   │       │   └── metrics.csv
+│   │   │       ├── version_26
+│   │   │       │   └── metrics.csv
+│   │   │       ├── version_27
+│   │   │       │   └── metrics.csv
+│   │   │       ├── version_28
+│   │   │       │   └── metrics.csv
+│   │   │       ├── version_29
+│   │   │       │   └── metrics.csv
+│   │   │       ├── version_3
+│   │   │       │   └── metrics.csv
+│   │   │       ├── version_30
+│   │   │       │   └── metrics.csv
+│   │   │       ├── version_31
+│   │   │       │   └── metrics.csv
+│   │   │       ├── version_32
+│   │   │       │   └── metrics.csv
+│   │   │       ├── version_4
+│   │   │       │   └── metrics.csv
+│   │   │       ├── version_5
+│   │   │       │   └── metrics.csv
+│   │   │       ├── version_6
+│   │   │       │   └── metrics.csv
+│   │   │       ├── version_7
+│   │   │       ├── version_8
+│   │   │       └── version_9
+│   │   ├── mlruns
+│   │   │   ├── 0
+│   │   │   │   └── meta.yaml
+│   │   │   ├── 527193900060031040
+│   │   │   │   ├── 8b79494de9af49b4987f31b773515caa
+│   │   │   │   │   ├── meta.yaml
+│   │   │   │   │   └── tags
+│   │   │   │   │       ├── mlflow.runName
+│   │   │   │   │       ├── mlflow.source.git.commit
+│   │   │   │   │       ├── mlflow.source.name
+│   │   │   │   │       ├── mlflow.source.type
+│   │   │   │   │       └── mlflow.user
+│   │   │   │   ├── 9241f6db87f140f0a6092b63e4cd7a51
+│   │   │   │   │   ├── checkpoints
+│   │   │   │   │   │   └── epoch=9-step=5200.ckpt
+│   │   │   │   │   ├── meta.yaml
+│   │   │   │   │   ├── metrics
+│   │   │   │   │   │   ├── epoch
+│   │   │   │   │   │   ├── train_loss
+│   │   │   │   │   │   ├── val_loss
+│   │   │   │   │   │   └── val_R2
+│   │   │   │   │   └── tags
+│   │   │   │   │       ├── mlflow.runName
+│   │   │   │   │       ├── mlflow.source.git.commit
+│   │   │   │   │       ├── mlflow.source.name
+│   │   │   │   │       ├── mlflow.source.type
+│   │   │   │   │       └── mlflow.user
+│   │   │   │   ├── ac8ceaf58d554b8984dd1afc32ae3d2c
+│   │   │   │   │   ├── checkpoints
+│   │   │   │   │   │   └── epoch=9-step=5200.ckpt
+│   │   │   │   │   ├── meta.yaml
+│   │   │   │   │   ├── metrics
+│   │   │   │   │   │   ├── epoch
+│   │   │   │   │   │   ├── train_loss
+│   │   │   │   │   │   ├── val_loss
+│   │   │   │   │   │   └── val_R2
+│   │   │   │   │   └── tags
+│   │   │   │   │       ├── mlflow.runName
+│   │   │   │   │       ├── mlflow.source.git.commit
+│   │   │   │   │       ├── mlflow.source.name
+│   │   │   │   │       ├── mlflow.source.type
+│   │   │   │   │       └── mlflow.user
+│   │   │   │   └── meta.yaml
+│   │   │   └── 594408531592829284
+│   │   │       ├── cceba5e2e6634fb9a4f5928e742b7b89
+│   │   │       │   ├── meta.yaml
+│   │   │       │   └── tags
+│   │   │       │       ├── mlflow.runName
+│   │   │       │       ├── mlflow.source.git.commit
+│   │   │       │       ├── mlflow.source.name
+│   │   │       │       ├── mlflow.source.type
+│   │   │       │       └── mlflow.user
+│   │   │       └── meta.yaml
+│   │   ├── note.md
+│   │   ├── predict.py
+│   │   ├── reports
+│   │   │   └── data_analysis.html
+│   │   ├── salary_model.py
+│   │   ├── Temp.csv
+│   │   └── train.py
+│   ├── scripts
+│   │   ├── dependencies
+│   │   │   └── dependencies_py.sh
+│   │   └── logs
+│   │       ├── kill-finder.sh
+│   │       └── log-finder.sh
+│   ├── services
+│   │   ├── frontend
+│   │   ├── grafana
+│   │   │   └── Dockerfile
+│   │   ├── mlflow
+│   │   │   └── Dockerfile
+│   │   ├── nginx
+│   │   │   └── Dockerfile
+│   │   ├── postgresql
+│   │   │   └── Dockerfile
+│   │   ├── postgresql_mlflow
+│   │   │   └── Dockerfile
+│   │   └── streamlite
+│   │       └── Dockerfile
+│   └── tree.txt
+├── tree.txt
+└── uv.lock
+
+86 directories, 126 files

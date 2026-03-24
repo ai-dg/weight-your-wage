@@ -14,6 +14,7 @@ SERVICES=(
   nginx
   postgres_db
   pgadmin_contain
+  frontend
 )
 
 for service in "${SERVICES[@]}"; do
