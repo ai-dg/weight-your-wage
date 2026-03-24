@@ -8,6 +8,18 @@ srcs/data
 __pycache__
 .cursor
 
+# Modèle / MLflow / checkpoints (artefacts locaux)
+srcs/model/logs/
+srcs/model/lightning_logs/
+srcs/model/mlruns/
+srcs/model/reports/
+srcs/model/1/
+srcs/model/datasets/
+*.ckpt
+1/
+tree.txt
+srcs/tree.txt
+
 # Frontend (Next.js / Node / Wrangler)
 srcs/services/frontend/node_modules/
 srcs/services/frontend/.next/
