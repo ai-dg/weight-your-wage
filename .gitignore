@@ -7,3 +7,4 @@ datasets/
 srcs/data
 __pycache__
 .cursor
+srcs/services/frontend/node_modules/
