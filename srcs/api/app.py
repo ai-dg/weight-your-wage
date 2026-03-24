@@ -35,7 +35,7 @@ def main():
 		background_tasks.add_task(_run_training)
 		return {"status": "training started", "message": "L'entraînement tourne en arrière-plan."}
 
-	@app.get("/predict")
+	@app.post("/predict")
 	def predict():
 		pass
 

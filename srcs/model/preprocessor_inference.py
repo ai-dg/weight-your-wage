@@ -16,7 +16,6 @@ from model.preprocessor_base import BasePreprocessor
 class InferencePreprocessor(BasePreprocessor):
 	def __init__(self, inference_path, preprocess_state_path):
 		super().__init__(inference_path)
-		self.drop_features(["CompTotal"])
 		try:
 			self.preprocess_state = joblib.load(preprocess_state_path)
 		except Exception as e :
@@ -60,10 +59,26 @@ class InferencePreprocessor(BasePreprocessor):
 				self.replace_nan_frequent(feature)
 
 			encoder = self.preprocess_state[feature]['encoder']
-			self.df[feature] = encoder.fit_transform(self.df[[feature]])
+			self.df[feature] = encoder.transform(self.df[[feature]]).ravel()
 	
 	def one_hot_encoding(self, initial_features):
-		return super().one_hot_encoding(initial_features)
+		for feature in initial_features:
+			nan_strategy = self.preprocess_state[feature]['nan_strategy']
+			if nan_strategy == 'placeholder':
+				placeholder = self.preprocess_state[feature]['placeholder']
+				self.df[feature] = self.df[feature].fillna(placeholder)
+			elif nan_strategy == 'most_frequent':
+				self.replace_nan_frequent(feature)
+
+			data = self.df[[feature]]
+			encoder = self.preprocess_state[feature]['encoder']
+			encoded = encoder.transform(data)
+
+			new_column_names = self.preprocess_state[feature]['encoded_columns']
+			encoded_df = pd.DataFrame(encoded, columns=new_column_names, index=self.df.index)
+			
+			self.df = pd.concat([self.df, encoded_df], axis=1)
+			self.df.drop(columns=[feature], inplace=True)
 	
 	def multi_label_encoding(self, initial_features):
 		return super().multi_label_encoding(initial_features)

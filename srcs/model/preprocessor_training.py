@@ -125,21 +125,33 @@ class TrainingPreprocessor(BasePreprocessor):
 
 			percentage_nan = self.df[feature].isna().mean()
 			
-			use_na = True if percentage_nan > 0.2 else False
+			if percentage_nan > 0.2:
+				placeholder = feature + "_NaN"
+				self.df[feature] = self.df[feature].fillna(placeholder)
+				self.preprocess_state[feature]['nan_strategy'] = "placeholder"
+				self.preprocess_state[feature]['placeholder'] = placeholder
+			else:
+				self.preprocess_state[feature]['nan_strategy'] = "most_frequent"
+				self.preprocess_state[feature]['most_frequent'] = self.replace_nan_frequent(feature)
 
-			df_encoded = pd.get_dummies(
-				self.df[feature],
-				dummy_na=use_na,
-				drop_first=True,
-				dtype=int)
+			data = self.df[[feature]]
 
-			new_column_names = [f"{feature}_{i}" for i in range(1, len(df_encoded.columns) + 1)]
-			df_encoded.columns = new_column_names
+			encoder = OneHotEncoder(
+				drop='first',
+				handle_unknown='ignore',
+				sparse_output=False,
+				dtype=int
+			)
+			encoded = encoder.fit_transform(data)
 
-			self.df = pd.concat([self.df, df_encoded], axis=1)
-		
-		self.df.drop(columns=initial_features, inplace=True)
+			new_column_names = [f"{feature}_{i}" for i in range(1, encoded.shape[1] + 1)]
+			encoded_df = pd.DataFrame(encoded, columns=new_column_names, index=self.df.index)
+			
+			self.df = pd.concat([self.df, encoded_df], axis=1)
+			self.df.drop(columns=[feature], inplace=True)
 
+			self.preprocess_state[feature]['encoder'] = encoder
+			self.preprocess_state[feature]['encoded_columns'] = new_column_names
 
 	def multi_label_encoding(self, initial_features: list[str]):
 		for i, feature in enumerate(initial_features):
