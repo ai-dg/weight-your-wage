@@ -27,7 +27,9 @@ class TrainingPreprocessor(BasePreprocessor):
 	def run_pipeline(self):
 		self.clean_data()
 		self.split_data()
-		self.normalize_by_standard()
+		y, X,  = self.extract_target()
+		self.preprocess_state["feature_order"] = X.columns.tolist()
+		self.normalize_by_standard(y, X)
 		# self.
 	
 	def update_currency(self):
@@ -92,10 +94,12 @@ class TrainingPreprocessor(BasePreprocessor):
 		for feature in features:
 
 			#For Numerical Encoding replace NaN with most median value
+			self.preprocess_state[feature] = {}
 			self.preprocess_state[feature]['median'] = self.replace_nan_median(feature)
 
 	def ordinal_encoding(self, initial_features: list[str]):
 		for feature in initial_features:
+			self.preprocess_state[feature] = {}
 
 			percentage_nan = self.df[feature].isna().sum() / len(self.df[feature])
 			valid_answers = get_features_answers(feature)
@@ -122,6 +126,8 @@ class TrainingPreprocessor(BasePreprocessor):
 
 	def one_hot_encoding(self, initial_features: list[str]):
 		for feature in initial_features:
+			self.preprocess_state[feature] = {}
+
 			valid_answers = get_features_answers(feature)
 
 			percentage_nan = self.df[feature].isna().mean()
@@ -163,6 +169,8 @@ class TrainingPreprocessor(BasePreprocessor):
 
 	def multi_label_encoding(self, initial_features: list[str]):
 		for i, feature in enumerate(initial_features):
+			self.preprocess_state[feature] = {}
+
 			valid_answers = get_features_answers(feature)
 
 			#Calculate the percentage of NaN for the current feature
@@ -186,6 +194,7 @@ class TrainingPreprocessor(BasePreprocessor):
 
 			#Create genereic name for the new columns
 			expanded_features_name = [f"{feature}_{i}" for i in range(1, len(valid_answers) + 1)]
+			self.preprocess_state[feature]['encoded_columns'] =  expanded_features_name
 
 			#Transform new columns into a Dataframe
 			expanded_df = pd.DataFrame(res, columns=expanded_features_name, index=self.df.index)
@@ -208,15 +217,29 @@ class TrainingPreprocessor(BasePreprocessor):
 
 	def target_encoding(self, features: list[str]):
 		for feature in features:
+			self.preprocess_state[feature] = {}
+
 			encoder = TargetEncoder(cols=[feature], smoothing=10.0)
 			result = encoder.fit_transform(self.df[[feature]], self.df["CompTotalEuro"])
 			self.preprocess_state[feature]['encoder'] = encoder
 			self.df[feature] = result[feature]	
 
+	def extract_target(self):
+		"""
+		Split the preprocessed dataframe into target and feature matrices.
 
-	def split_data(self, ratio_test : float = 0.1, ratio_val : float = 0.20, seed : int = 42):
+		Returns:
+			tuple[pd.Series, pd.DataFrame]:
+				A tuple containing:
+				- y: The target salary column ("CompTotalEuro").
+				- X: The feature dataframe with "CompTotalEuro" removed.
+		"""
 		y = self.df.loc[:,"CompTotalEuro"]
 		X = self.df.drop("CompTotalEuro", axis=1)
+		return y, X
+
+
+	def split_data(self, X: pd.DataFrame, y: pd.DataFrame, ratio_test : float = 0.1, ratio_val : float = 0.20, seed : int = 42):
 
 		X_split, X_test, y_split, y_test = train_test_split(X, y, random_state=seed, test_size=ratio_test, shuffle=True)
 
@@ -252,6 +275,7 @@ class TrainingPreprocessor(BasePreprocessor):
 		self.y_test_scaled = scaler_y.transform(self.y_test_log)
 
 
+		self.preprocess_state['scaler_x'] = scaler_x
 		# joblib.dump(scaler_x, "scaler_x.pkl")
 		# joblib.dump(scaler_y, "scaler_y.pkl")
 

@@ -25,6 +25,7 @@ class InferencePreprocessor(BasePreprocessor):
 
 	def run_pipeline(self):
 		self.clean_data()
+		self.format_input_for_inference()
 		self.normalize_by_standard()
 
 	######################################################################
@@ -107,11 +108,28 @@ class InferencePreprocessor(BasePreprocessor):
 	
 	def target_encoding(self, features):
 		for feature in features:
-			encoder = self.preprocess_state[feature]
+			encoder = self.preprocess_state[feature]['encoder']
 			self.df[feature] = encoder.transform(self.df[[feature]]).ravel()
 	
+	def format_input_for_inference(self):
+		feature_order = self.preprocess_state["feature_order"]
+
+		expected = set(feature_order)
+		actual = set(self.df.columns)
+
+		missing = expected - actual
+		extra = actual - expected
+		if missing:
+			raise ValueError(f"Missing inference columns after preprocessing: {missing}")
+		if extra:
+			raise ValueError(f"Extra inference columns after preprocessing: {extra}")
+
+		self.X = self.df[feature_order].copy()
+
+
 	def normalize_by_standard(self):
-		pass
+		scaler_x = self.preprocess_state['scaler_x']
+		self.X_scaled = scaler_x.transform(self.X)
 	
 	def load_data_to_torch(self):
 		pass
