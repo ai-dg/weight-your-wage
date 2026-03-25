@@ -82,6 +82,7 @@ class BasePreprocessor(L.LightningDataModule, ABC):
 	######################################################################
 	##### 						UTILS								 #####
 	######################################################################
+	@staticmethod
 	def erase_str(value :str):
 		return value[:3]
 

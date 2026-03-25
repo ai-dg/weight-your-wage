@@ -27,6 +27,7 @@ class InferencePreprocessor(BasePreprocessor):
 		self.clean_data()
 		self.format_input_for_inference()
 		self.normalize_by_standard()
+		self.X_tensor = tensor(self.X_scaled, dtype=float32)
 
 	######################################################################
 	##### 						UTILS								 #####
@@ -131,9 +132,6 @@ class InferencePreprocessor(BasePreprocessor):
 		scaler_x = self.preprocess_state['scaler_x']
 		self.X_scaled = scaler_x.transform(self.X)
 	
-	def load_data_to_torch(self):
-		pass
-
 	
 def main():
 	datapreprocess = InferencePreprocessor("./model/datasets/inference.csv")

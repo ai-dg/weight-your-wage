@@ -1,7 +1,7 @@
 from gc import callbacks
 
 from model.salary_model import SalaryModel
-from srcs.model.base_preprocessor import DataLoaderClass
+from dataloader import DataLoaderClass
 import lightning as L
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping, LearningRateMonitor, ModelSummary, LearningRateFinder
 from lightning.pytorch.loggers import CSVLogger, MLFlowLogger

@@ -26,8 +26,8 @@ class TrainingPreprocessor(BasePreprocessor):
 
 	def run_pipeline(self):
 		self.clean_data()
-		self.split_data()
 		y, X,  = self.extract_target()
+		self.split_data(y, X)
 		self.preprocess_state["feature_order"] = X.columns.tolist()
 		self.normalize_by_standard(y, X)
 		# self.
