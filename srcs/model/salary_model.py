@@ -27,37 +27,38 @@ class SalaryModel(L.LightningModule):
 		self.lr = lr
 		self.r2 = R2Score()
 
+	def forward(self, x):
+		z = self.base_model(x)
+		return self.regressor(z)
+ 
 	def training_step(self, batch):
 		x, y = batch
-		z = self.base_model(x)
-		y_hat = self.regressor(z)
+		y_hat = self(x)
 		loss = F.mse_loss(y_hat, y)
 		self.log("train_loss", loss, on_step=False, on_epoch=True, logger=True, prog_bar=True)
 		return loss
 	
+	def validation_step(self, batch):
+		x, y = batch
+		y_hat = self(x)
+		val_loss = F.mse_loss(y_hat, y)
+		self.log("val_loss", val_loss, on_step=False, on_epoch=True, logger=True, prog_bar=True)
+		val_R2 = self.r2(y_hat, y)
+		self.log("val_R2", val_R2, on_step=False, on_epoch=True, logger=True, prog_bar=True)
+		# return val_loss
+
 	def test_step(self, batch):
 		x, y = batch
-		z = self.base_model(x)
-		y_hat = self.regressor(z)
+		y_hat = self(x)
 		test_loss = F.mse_loss(y_hat, y)
 		self.log("test_loss", test_loss, on_step=False, on_epoch=True, logger=True, prog_bar=True)
 		test_R2 = self.r2(y_hat, y)
 		self.log("test_R2", test_R2, on_step=False, on_epoch=True, logger=True, prog_bar=True)
 
 
-	def forward(self, x):
-		embeded = self.base_model(x)
-		return embeded
- 
-	def validation_step(self, batch):
-		x, y = batch
-		z = self.base_model(x)
-		y_hat = self.regressor(z)
-		val_loss = F.mse_loss(y_hat, y)
-		self.log("val_loss", val_loss, on_step=False, on_epoch=True, logger=True, prog_bar=True)
-		val_R2 = self.r2(y_hat, y)
-		self.log("val_R2", val_R2, on_step=False, on_epoch=True, logger=True, prog_bar=True)
-		# return val_loss
+	def predict_step(self, batch, batch_idx):
+		x = batch[0] if isinstance(batch, (tuple, list)) else batch
+		return self(x)
 
 	def configure_optimizers(self):
 		optimizer = optim.Adam(self.parameters(), lr=self.lr, weight_decay=1e-4)
