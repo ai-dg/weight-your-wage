@@ -54,41 +54,6 @@ def get_features_answers(feature: str):
 				"Coding Bootcamp"
 				]
 		
-		case "DevType":
-			return [
-				"Academic researcher",
-				"AI/ML engineer",
-				"Applied scientist",
-				"Architect, software or solutions",
-				"Cloud infrastructure engineer",
-				"Cybersecurity or InfoSec professional",
-				"Data engineer",
-				"Data or business analyst",
-				"Data scientist",
-				"Database administrator or engineer",
-				"Developer, AI apps or physical AI",
-				"Developer, back-end",
-				"Developer, desktop or enterprise applications",
-				"Developer, embedded applications or devices",
-				"Developer, front-end",
-				"Developer, full-stack",
-				"Developer, game or graphics",
-				"Developer, mobile",
-				"Developer, QA or test",
-				"DevOps engineer or professional",
-				"Engineering manager",
-				"Financial analyst or engineer",
-				"Founder, technology or otherwise",
-				"Product manager",
-				"Project manager",
-				"Retired",
-				"Senior executive (C-suite, VP, etc.)",
-				"Student",
-				"Support engineer or analyst",
-				"System administrator",
-				"UX, Research Ops or UI design professional",
-			]
-		
 		case "LanguageHaveWorkedWith":
 			return [
 				"Ada",
@@ -297,4 +262,128 @@ def get_features_answers(feature: str):
 				"No, but I plan to soon",
 				"No, and I don't plan to"
 				]
+		case "MainBranch":
+			return [
+				"I am a developer by profession",
+				"I am not primarily a developer, but I write code sometimes as part of my work/studies",
+				"I used to be a developer by profession, but no longer am",
+				"I am learning to code",
+				"I code primarily as a hobby",
+				"I work with developers or my work supports developers but am not a developer by profession",
+				"None of these",
+			]
+		case "Age":
+			return [
+				"Under 18 years old",
+				"18-24 years old",
+				"25-34 years old",
+				"35-44 years old",
+				"45-54 years old",
+				"55-64 years old",
+				"65 years or older",
+				"Prefer not to say",
+			]
+		case "Employment":
+			return [
+				"Employed",
+				"Independent contractor, freelancer, or self-employed",
+				"Not employed",
+				"Student",
+				"Retired",
+				"I prefer not to say",
+			]
+		case "DevType":
+			return [
+				"Academic researcher",
+				"AI/ML engineer",
+				"Applied scientist",
+				"Architect, software or solutions",
+				"Cloud infrastructure engineer",
+				"Cybersecurity or InfoSec professional",
+				"Data engineer",
+				"Data or business analyst",
+				"Data scientist",
+				"Database administrator or engineer",
+				"Developer, AI apps or physical AI",
+				"Developer, back-end",
+				"Developer, desktop or enterprise applications",
+				"Developer, embedded applications or devices",
+				"Developer, front-end",
+				"Developer, full-stack",
+				"Developer, game or graphics",
+				"Developer, mobile",
+				"Developer, QA or test",
+				"DevOps engineer or professional",
+				"Engineering manager",
+				"Financial analyst or engineer",
+				"Founder, technology or otherwise",
+				"Product manager",
+				"Project manager",
+				"Retired",
+				"Senior executive (C-suite, VP, etc.)",
+				"Student",
+				"Support engineer or analyst",
+				"System administrator",
+				"UX, Research Ops or UI design professional",
+			]
+		
+		case "OrgSize":
+			return [
+				"Just me - I am a freelancer, sole proprietor, etc.",
+				"Less than 20 employees",
+				"20 to 99 employees",
+				"100 to 499 employees",
+				"500 to 999 employees",
+				"1,000 to 4,999 employees",
+				"5,000 to 9,999 employees",
+				"10,000 or more employees",
+				"I don’t know",
+			]
+		case "ICorPM":
+			return [
+				"Individual contributor",
+				"People manager",
+			]
+		case "RemoteWork":
+			return [
+				"Remote",
+				"In-person",
+				"Hybrid (some remote, leans heavy to in-person)",
+				"Hybrid (some in-person, leans heavy to flexibility)",
+				"Your choice (very flexible, you can come in when you want or just as needed)",
+			]
+		case "Industry":
+			return [
+				"Software Development",
+				"Computer Systems Design and Services",
+				"Internet, Telecomm or Information Services",
+				"Fintech",
+				"Energy",
+				"Government",
+				"Banking/Financial Services",
+				"Manufacturing",
+				"Transportation, or Supply Chain",
+				"Healthcare",
+				"Retail and Consumer Services",
+				"Higher Education",
+				"Media & Advertising Services",
+				"Insurance",
+			]
+		case "AIAgents":
+			return [
+				"Yes, I use AI agents at work daily",
+				"es, I use AI agents at work weekly",
+				"Yes, I use AI agents at work monthly or infrequently",
+				"No, I use AI exclusively in copilot/autocomplete mode",
+				"No, but I plan to",
+				"No, and I don't plan to",
+			]
+		case "LearnCodeAI":
+			return [
+				"Yes, I learned how to use AI-enabled tools required for my job or to benefit my career",
+				"Yes, I learned how to use AI-enabled tools for my personal curiosity and/or hobbies",
+				"No, I learned something that was not related to AI or AI enablement as required for my job or to benefit my career",
+				"No, I learned something that was not related to AI or AI enablement for my personal curiosity and/or hobbies",
+				"No, I didn't spend time learning in the past year",
+			]
 	return None
