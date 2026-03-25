@@ -74,8 +74,8 @@ class InferencePreprocessor(BasePreprocessor):
 			encoder = self.preprocess_state[feature]['encoder']
 			encoded = encoder.transform(data)
 
-			new_column_names = self.preprocess_state[feature]['encoded_columns']
-			encoded_df = pd.DataFrame(encoded, columns=new_column_names, index=self.df.index)
+			encoded_columns = self.preprocess_state[feature]['encoded_columns']
+			encoded_df = pd.DataFrame(encoded, columns=encoded_columns, index=self.df.index)
 			
 			self.df = pd.concat([self.df, encoded_df], axis=1)
 			self.df.drop(columns=[feature], inplace=True)

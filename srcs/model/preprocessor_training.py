@@ -122,12 +122,17 @@ class TrainingPreprocessor(BasePreprocessor):
 
 	def one_hot_encoding(self, initial_features: list[str]):
 		for feature in initial_features:
+			valid_answers = get_features_answers(feature)
 
 			percentage_nan = self.df[feature].isna().mean()
-			
+
 			if percentage_nan > 0.2:
 				placeholder = feature + "_NaN"
 				self.df[feature] = self.df[feature].fillna(placeholder)
+
+				if placeholder not in valid_answers:
+					valid_answers = [placeholder] + valid_answers
+
 				self.preprocess_state[feature]['nan_strategy'] = "placeholder"
 				self.preprocess_state[feature]['placeholder'] = placeholder
 			else:
@@ -137,21 +142,24 @@ class TrainingPreprocessor(BasePreprocessor):
 			data = self.df[[feature]]
 
 			encoder = OneHotEncoder(
+				categories=[valid_answers],
 				drop='first',
 				handle_unknown='ignore',
 				sparse_output=False,
 				dtype=int
 			)
+
 			encoded = encoder.fit_transform(data)
 
-			new_column_names = [f"{feature}_{i}" for i in range(1, encoded.shape[1] + 1)]
-			encoded_df = pd.DataFrame(encoded, columns=new_column_names, index=self.df.index)
-			
+			encoded_columns = [f"{feature}_{i}" for i in range(1, encoded.shape[1] + 1)]
+			encoded_df = pd.DataFrame(encoded, columns=encoded_columns, index=self.df.index)
+
 			self.df = pd.concat([self.df, encoded_df], axis=1)
 			self.df.drop(columns=[feature], inplace=True)
 
 			self.preprocess_state[feature]['encoder'] = encoder
-			self.preprocess_state[feature]['encoded_columns'] = new_column_names
+			self.preprocess_state[feature]['encoded_columns'] =  encoded_columns
+
 
 	def multi_label_encoding(self, initial_features: list[str]):
 		for i, feature in enumerate(initial_features):
