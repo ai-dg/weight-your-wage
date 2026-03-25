@@ -325,6 +325,7 @@ def get_features_answers(feature: str):
 				"Support engineer or analyst",
 				"System administrator",
 				"UX, Research Ops or UI design professional",
+				"Other (please specify):",
 			]
 		
 		case "OrgSize":
@@ -368,6 +369,7 @@ def get_features_answers(feature: str):
 				"Higher Education",
 				"Media & Advertising Services",
 				"Insurance",
+				"Other (please specify):",
 			]
 		case "AIAgents":
 			return [
