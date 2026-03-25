@@ -244,7 +244,7 @@ class TrainingPreprocessor(BasePreprocessor):
 
 		self.X_train_scaled = scaler_x.fit_transform(self.X_train)
 		self.X_val_scaled = scaler_x.transform(self.X_val)
-		self.X_test_scaled = scaler_x.fit_transform(self.X_test)
+		self.X_test_scaled = scaler_x.transform(self.X_test)
 
 
 		self.y_train_scaled = scaler_y.fit_transform(self.y_train_log)
