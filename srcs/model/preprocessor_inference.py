@@ -106,13 +106,15 @@ class InferencePreprocessor(BasePreprocessor):
 
 	
 	def target_encoding(self, features):
-		return super().target_encoding(features)
+		for feature in features:
+			encoder = self.preprocess_state[feature]
+			self.df[feature] = encoder.transform(self.df[[feature]]).ravel()
 	
 	def normalize_by_standard(self):
-		return super().normalize_by_standard()
+		pass
 	
 	def load_data_to_torch(self):
-		return super().load_data_to_torch()
+		pass
 
 	
 def main():

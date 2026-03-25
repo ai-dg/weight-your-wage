@@ -210,6 +210,7 @@ class TrainingPreprocessor(BasePreprocessor):
 		for feature in features:
 			encoder = TargetEncoder(cols=[feature], smoothing=10.0)
 			result = encoder.fit_transform(self.df[[feature]], self.df["CompTotalEuro"])
+			self.preprocess_state[feature]['encoder'] = encoder
 			self.df[feature] = result[feature]	
 
 
