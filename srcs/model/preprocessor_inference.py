@@ -81,7 +81,29 @@ class InferencePreprocessor(BasePreprocessor):
 			self.df.drop(columns=[feature], inplace=True)
 	
 	def multi_label_encoding(self, initial_features):
-		return super().multi_label_encoding(initial_features)
+		for feature in initial_features:
+			valid_answers = get_features_answers(feature)
+			nan_placeholder = self.preprocess_state[feature]['nan_placeholder']
+			if nan_placeholder not in valid_answers:
+				valid_answers = [nan_placeholder] + valid_answers
+			data = self.df[feature].str.split(';').apply(lambda x: x if isinstance(x, list) else nan_placeholder)
+			encoder = self.preprocess_state[feature]['encoder']
+			encoded = encoder.transform(data)
+
+			encoded_columns = self.preprocess_state[feature]['encoded_columns']
+			encoded_df = pd.DataFrame(encoded, columns=encoded_columns, index=self.df.index)
+
+			valid_set = set(valid_answers)
+
+			other_type = self.preprocess_state[feature]['other']
+		
+			self.df[other_type] = data.apply(
+				lambda x: 1 if any(item not in valid_set for item in x) else 0
+			)
+
+			self.df = pd.concat([self.df, encoded_df], axis=1)
+			self.df.drop(columns=[feature], inplace=True)
+
 	
 	def target_encoding(self, features):
 		return super().target_encoding(features)

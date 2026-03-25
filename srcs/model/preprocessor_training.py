@@ -169,16 +169,20 @@ class TrainingPreprocessor(BasePreprocessor):
 			percentage_nan = self.df[feature].isna().sum() / len(self.df[feature])
 
 			#If Nan > 20% create a new feature "Unknown" else it will put 0 into all expanded features
-			if (percentage_nan > 0.2):
-				data = self.df[feature].str.split(';').apply(lambda x: x if isinstance(x, list) else [feature + "_NaN"])
-			else:
-				data = self.df[feature].str.split(';').apply(lambda x: x if isinstance(x, list) else [])
+			nan_placeholder = feature + "_NaN" if percentage_nan > 0.2 else []
+			if nan_placeholder not in valid_answers:
+				valid_answers = [nan_placeholder] + valid_answers
+
+			data = self.df[feature].str.split(';').apply(lambda x: x if isinstance(x, list) else nan_placeholder)
+			self.preprocess_state[feature]['nan_placeholder'] = nan_placeholder
 
 			#Use Scikit Learn to Hot One Encode feature (Add new boolean features for each possible answer)
 			#NaN put 0 to every possible answer
 			mlb = MultiLabelBinarizer(classes=valid_answers)
 
 			res = mlb.fit_transform(data)
+
+			self.preprocess_state[feature]['encoder'] = mlb
 
 			#Create genereic name for the new columns
 			expanded_features_name = [f"{feature}_{i}" for i in range(1, len(valid_answers) + 1)]
@@ -190,6 +194,7 @@ class TrainingPreprocessor(BasePreprocessor):
 			valid_set = set(valid_answers)
 
 			other_type = feature + "_Other"
+			self.preprocess_state[feature]['other'] = other_type
 		
 			self.df[other_type] = data.apply(
 				lambda x: 1 if any(item not in valid_set for item in x) else 0
