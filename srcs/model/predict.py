@@ -1,27 +1,26 @@
-# from gc import callbacks
+from gc import callbacks
+from model.salary_model import SalaryModel
+from model.preprocessor_inference import InferencePreprocessor
+import lightning as L
+from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping, LearningRateMonitor, ModelSummary
+from lightning.pytorch.loggers import CSVLogger
+import lovely_tensors as lt
+import numpy as np
+import torch
 
-# from model import SalaryModel
-# from dataloader import DataLoaderClass
-# import lightning as L
-# from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping, LearningRateMonitor, ModelSummary
-# from lightning.pytorch.loggers import CSVLogger
-# import lovely_tensors as lt
+lt.monkey_patch()
+def GeneralInferencer(path):
+    inference = InferencePreprocessor(path, "./preprocess_state.joblib")
+    inference.run_pipeline()
+    checkpoint = "./lightning_logs/version_0/checkpoints/epoch=9-step=1000.ckpt"
 
-# lt.monkey_patch()
-# def main():
-#	 # train the model (hint: here are some helpful Trainer arguments for rapid idea iteration)
-#	 data = DataLoaderClass("./srcs/model/datasets/survey_results_public.csv")
-#	 salary_model = SalaryModel(len(data.X_train.columns))
-#	 logger = [CSVLogger("./logs")]
-#	 callback = [ModelCheckpoint("./logs", verbose=True)] #, EarlyStopping('val_loss', mode="min",patience=5)
-#	 trainer = L.Trainer(max_epochs=10, logger=logger, callbacks=callback)
-	
-	
-#	 train_dataloader, val_dataloader, test_dataloader = data.load_data_to_torch()
-#	 trainer.fit(model=salary_model, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader)
-#	 for name, params in salary_model.named_parameters():
-#		 print(f"name : {name} \n params : {params}")
-	
-#	 trainer.test(model=salary_model, dataloaders=test_dataloader)
-# if __name__ == "__main__" :
-#	 main()
+    salary_model = SalaryModel.load_from_checkpoint(checkpoint, nb_features=inference.X_scaled.shape[1])
+    salary_model.eval()
+
+    with torch.no_grad():
+        y_hat = salary_model(inference.X_tensor)
+        salary = np.expm1(y_hat.cpu().numpy())
+    return salary
+    
+if __name__ == "__main__" :
+    GeneralInferencer("./datasets/inference.csv")
