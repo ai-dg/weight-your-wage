@@ -7,7 +7,7 @@ from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping, Learning
 from lightning.pytorch.loggers import CSVLogger, MLFlowLogger
 import mlflow
 import lovely_tensors as lt
-
+import joblib
 
 MLFLOW_URI = "http://mlflow-server:5000"
 
@@ -45,8 +45,9 @@ def GeneralTrainer():
 		print(f"name : {name} \n params : {params}", flush=True)
 	sys.stdout.flush()
 
-""" 	with mlflow.start_run(run_id=mlf_logger.run_id):
-		mlflow.log_artifact("mlrun_artifact.txt") """
+
+	with mlflow.start_run(run_id=mlf_logger.run_id):
+		mlflow.log_artifact(f"preprocessing/{data.preprocess_state['filename']}")
 
 	
 	#trainer.test(model=salary_model, dataloaders=test_dataloader)

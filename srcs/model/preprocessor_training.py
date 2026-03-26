@@ -26,11 +26,12 @@ class TrainingPreprocessor(BasePreprocessor):
 
 	def run_pipeline(self):
 		self.clean_data()
-		y, X,  = self.extract_target()
-		self.split_data(y, X)
+		X, y  = self.extract_target()
+		self.split_data(X, y)
 		self.preprocess_state["feature_order"] = X.columns.tolist()
-		self.normalize_by_standard(y, X)
-		# self.
+		self.normalize_by_standard()
+		self.preprocess_state['filename'] = "preprocess_state.joblib"
+		joblib.dump(self.preprocess_state, self.preprocess_state['filename'])
 	
 	def update_currency(self):
 		"""
@@ -236,7 +237,7 @@ class TrainingPreprocessor(BasePreprocessor):
 		"""
 		y = self.df.loc[:,"CompTotalEuro"]
 		X = self.df.drop("CompTotalEuro", axis=1)
-		return y, X
+		return X, y
 
 
 	def split_data(self, X: pd.DataFrame, y: pd.DataFrame, ratio_test : float = 0.1, ratio_val : float = 0.20, seed : int = 42):
@@ -276,6 +277,7 @@ class TrainingPreprocessor(BasePreprocessor):
 
 
 		self.preprocess_state['scaler_x'] = scaler_x
+		self.preprocess_state['scaler_y'] = scaler_y
 		# joblib.dump(scaler_x, "scaler_x.pkl")
 		# joblib.dump(scaler_y, "scaler_y.pkl")
 

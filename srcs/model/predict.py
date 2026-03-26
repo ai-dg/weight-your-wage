@@ -10,16 +10,25 @@ import torch
 
 lt.monkey_patch()
 def GeneralInferencer(path):
-    inference = InferencePreprocessor(path, "./preprocess_state.joblib")
-    inference.run_pipeline()
+    # pick a run id
+    # ...
+
     checkpoint = "./lightning_logs/version_0/checkpoints/epoch=9-step=1000.ckpt"
+    
+    inference = InferencePreprocessor(path, "./preprocess_state.pkl")
+    inference.run_pipeline()
 
     salary_model = SalaryModel.load_from_checkpoint(checkpoint, nb_features=inference.X_scaled.shape[1])
     salary_model.eval()
 
     with torch.no_grad():
         y_hat = salary_model(inference.X_tensor)
-        salary = np.expm1(y_hat.cpu().numpy())
+
+        salary = np.expm1(
+                inference.preprocess_state['scaler_y'].inverse_transform(
+                    y_hat.cpu().numpy()
+                )
+            )
     return salary
     
 if __name__ == "__main__" :
