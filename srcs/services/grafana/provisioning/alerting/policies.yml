@@ -1,0 +1,5 @@
+apiVersion: 1
+
+policies:
+  - receiver: email-alert
+    group_by: ['alertname']

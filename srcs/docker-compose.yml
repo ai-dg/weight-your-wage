@@ -3,13 +3,91 @@ services:
   grafana:
     container_name: grafana
     image: grafana/grafana:latest
+    environment:
+      - GF_SMTP_ENABLED=${GF_SMTP_ENABLED}
+      - GF_SMTP_HOST=${GF_SMTP_HOST}
+      - GF_SMTP_USER=${GF_SMTP_USER}
+      - GF_SMTP_PASSWORD=${GF_SMTP_PASSWORD}
+      - GF_SMTP_FROM_ADDRESS=${GF_SMTP_FROM_ADDRESS}
     ports:
       - "${GRAFANA_PORT:-3000}:3000"
     user: "${UID}:${GID}"
     volumes:
-      - model:/usr/share/model/
+      # - model:/usr/share/model/
+      # - grafana_data:/var/lib/grafana
+      - ${PWD}/srcs/services/grafana/provisioning:/etc/grafana/provisioning
+      - ${PWD}/srcs/services/grafana/dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      - prometheus
+      - loki
     networks:
-      - model_network
+      - monitoring
+
+  prometheus:
+    container_name: prometheus
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ${PWD}/srcs/services/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - monitoring
+
+  node-exporter:
+    container_name: node-exporter
+    image: prom/node-exporter:latest
+    restart: unless-stopped
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+    networks:
+      - monitoring
+
+  cadvisor:
+    container_name: cadvisor
+    image: gcr.io/cadvisor/cadvisor:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    networks:
+      - monitoring
+  
+  loki:
+    container_name: loki
+    image: grafana/loki:latest
+    ports:
+      - "3100:3100"
+    volumes:
+      - ${PWD}/srcs/services/loki/loki-config.yml:/etc/loki/local-config.yaml
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - monitoring
+
+  promtail:
+    container_name: promtail
+    image: grafana/promtail:latest
+    volumes:
+      - /var/log:/var/log
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - ${PWD}/srcs/services/promtail/promtail-config.yml:/etc/promtail/config.yml
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - monitoring
+
   # ── MinIO (Data Lake & Artifacts) ──────────────────────────────────────────
   minio:
     container_name: minio
@@ -122,7 +200,7 @@ services:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
     ports:
-      - "8080:80"
+      - "8070:80"
     depends_on:
       - postgres
     networks:
@@ -155,10 +233,24 @@ volumes:
     driver_opts:
       type: none
       o: bind
-      device: ${PWD}/.venv
+      device: ../.venv
+
+  prometheus_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/srcs/data/prometheus
+  
+  grafana_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/srcs/data/grafana_data
 
 networks:
   postgres_network:
     driver: bridge
-  model_network:
+  monitoring:
     driver: bridge

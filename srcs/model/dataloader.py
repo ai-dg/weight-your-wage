@@ -83,14 +83,12 @@ class DataLoaderClass(L.LightningDataModule):
 		
 		need_target_encoding = ["Country"]
 
-
-		self.numerical_encoding(need_numerical_encoding)
-		self.binary_encoding(need_binary_encoding)
-		self.ordinal_encoding(need_ordinal_encoding)
-		self.one_hot_encoding(need_hot_encoding)
-		self.multi_label_encoding(need_multi_label_encoding)
-		self.target_encoding(need_target_encoding)
-
+		self.numerical_encoding(need_numerical_encoding) #Need median of each features
+		self.binary_encoding(need_binary_encoding) #Replace Nan by false (doesnt need to change anything for test)
+		self.ordinal_encoding(need_ordinal_encoding) #Check for percent of Nan	#Replace by Nan category	#Replace by most frequent
+		self.one_hot_encoding(need_hot_encoding) #Check percent of Nan #Replace Nan by zero #else Nan category 
+		self.multi_label_encoding(need_multi_label_encoding) #Check percent NaN #create Nan category #Put zero instead
+		self.target_encoding(need_target_encoding) #Save encoder
 
 	def update_currency(self):
 		"""
@@ -133,7 +131,6 @@ class DataLoaderClass(L.LightningDataModule):
 		
 		# Delete the features Currency and CompTotal
 		self.drop_features(["Currency", "CompTotal"])
-		
 
 
 	######################################################################
@@ -142,8 +139,8 @@ class DataLoaderClass(L.LightningDataModule):
 	def drop_features(self, features:list[str]):
 		self.df.drop(columns=features, inplace=True)
 
-
-	def replace_nan_median(self, feature: str):
+	#Can remove this function
+	def replace_nan_median(self, feature: str | list[str], median): 
 		median = self.df[feature].median()
 		self.df[feature] = self.df[feature].fillna(median)
 
@@ -154,35 +151,11 @@ class DataLoaderClass(L.LightningDataModule):
 	######################################################################
 	##### 						ENCODING							 #####
 	######################################################################
-	
 
 	def numerical_encoding(self, features: list[str]):
-		for feature in features:
-
-			#For Numerical Encoding replace NaN with most median value
-			self.replace_nan_median(feature)
-
-	def ordinal_encoding(self, initial_features: list[str]):
-		for feature in initial_features:
-
-			percentage_nan = self.df[feature].isna().sum() / len(self.df[feature])
-			valid_answers = get_features_answers(feature)
-
-			#If Nan > 20% set NaN value to -1 else replace them with the most frequent value
-			if (percentage_nan > 0.2):
-				placeholder = feature + "_NaN"
-				self.df[feature] = self.df[feature].fillna(placeholder)
-
-				if placeholder not in valid_answers:
-					valid_answers = [placeholder] + valid_answers
-			else:	
-				self.replace_nan_frequent(feature)
-
-			encoder = OrdinalEncoder(categories=[valid_answers],
-							handle_unknown='use_encoded_value',
-							unknown_value=-1)
-
-			self.df[feature] = encoder.fit_transform(self.df[[feature]])
+		#For Numerical Encoding replace NaN with most median value
+		self.numerical_encoding_median = self.df[features].median()
+		self.df[feature] = self.df[feature].fillna(self.numerical_encoding_median)
 
 	def binary_encoding(self, features: list[str]):
 		for feature in features:
@@ -191,15 +164,39 @@ class DataLoaderClass(L.LightningDataModule):
 
 			self.df[feature] = self.df[feature].replace("Yes", 1)
 			self.df[feature] = self.df[feature].replace("No", 0)
-			
 
+	def ordinal_encoding(self, initial_features: list[str]):
+		self.ordinal_encoding_nan_percent = []
+		self.ordinal_encoding_frequent = []
+		for feature in initial_features:
+
+			percentage_nan = self.df[feature].isna().sum() / len(self.df[feature])
+			self.ordinal_encoding_nan_percent.append(percentage_nan)
+			valid_answers = get_features_answers(feature)
+
+			#If Nan > 20% set NaN value to -1 else replace them with the most frequent value
+			if (percentage_nan > 0.2):
+				self.ordinal_encoding_frequent.append(np.nan)
+				placeholder = feature + "_NaN"
+				self.df[feature] = self.df[feature].fillna(placeholder)
+				if placeholder not in valid_answers:
+					valid_answers = [placeholder] + valid_answers
+			else:
+				most_frequent = self.df[feature].mode()[0]
+				self.ordinal_encoding_frequent.append(most_frequent)
+				self.df[feature] = self.df[feature].fillna(most_frequent)
+
+			encoder = OrdinalEncoder(categories=[valid_answers],
+							handle_unknown='use_encoded_value',
+							unknown_value=-1)
+
+			self.df[feature] = encoder.fit_transform(self.df[[feature]])
 
 	def one_hot_encoding(self, initial_features: list[str]):
 		for feature in initial_features:
 
 			percentage_nan = self.df[feature].isna().mean()
-			
-			use_na = True if percentage_nan > 0.2 else False
+			use_na = percentage_nan > 0.2
 
 			df_encoded = pd.get_dummies(
 				self.df[feature],
@@ -213,7 +210,6 @@ class DataLoaderClass(L.LightningDataModule):
 			self.df = pd.concat([self.df, df_encoded], axis=1)
 		
 		self.df.drop(columns=initial_features, inplace=True)
-
 
 	def multi_label_encoding(self, initial_features: list[str]):
 		for i, feature in enumerate(initial_features):
@@ -254,7 +250,8 @@ class DataLoaderClass(L.LightningDataModule):
 
 		#Drop Initial Features
 		self.df.drop(columns=initial_features, inplace=True)
-
+	
+	#TargetEncoder 
 	def target_encoding(self, features: list[str]):
 		for feature in features:
 			encoder = TargetEncoder(cols=[feature], smoothing=10.0)
