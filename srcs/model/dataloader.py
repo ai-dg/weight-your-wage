@@ -26,8 +26,10 @@ class DataLoaderClass(L.LightningDataModule):
 			print(f"Error : {e}")
 			raise RuntimeError(f"Error : {e}")
 		
-		self.clean_data()
 		self.split_data()
+		self.clean_data()
+		self.clean_validation_data() #Need create another function for validation data
+		self.save_data()
 		self.normalize_by_standard()
 		# self.
 
@@ -155,7 +157,7 @@ class DataLoaderClass(L.LightningDataModule):
 	def numerical_encoding(self, features: list[str]):
 		#For Numerical Encoding replace NaN with most median value
 		self.numerical_encoding_median = self.df[features].median()
-		self.df[feature] = self.df[feature].fillna(self.numerical_encoding_median)
+		self.df[features] = self.df[features].fillna(self.numerical_encoding_median)
 
 	def binary_encoding(self, features: list[str]):
 		for feature in features:
@@ -256,26 +258,41 @@ class DataLoaderClass(L.LightningDataModule):
 		for feature in features:
 			encoder = TargetEncoder(cols=[feature], smoothing=10.0)
 			result = encoder.fit_transform(self.df[[feature]], self.df["CompTotalEuro"])
-			self.df[feature] = result[feature]	
-
+			self.df[feature] = result[feature]
 
 	def split_data(self, ratio_test : float = 0.1, ratio_val : float = 0.20, seed : int = 42):
-		y = self.df.loc[:,"CompTotalEuro"]
-		X = self.df.drop("CompTotalEuro", axis=1)
+		dataset = self.df
 
-		X_split, X_test, y_split, y_test = train_test_split(X, y, random_state=seed, test_size=ratio_test, shuffle=True)
+		dataset_split, dataset_test = train_test_split(dataset, random_state=seed, test_size=ratio_test, shuffle=True)
+		self.dataset_test = dataset_test
 
-		self.X_test = X_test
-		self.y_test = y_test.to_frame()
-		X_test.to_csv("./model/datasets/X_test.csv")
-		y_test.to_csv("./model/datasets/y_test.csv")
+		dataset_train, dataset_val = train_test_split(dataset_split, random_state=seed, test_size=ratio_val, shuffle=True)
+		self.dataset_train = dataset_train
+		self.dataset_val = dataset_val
 
-		X_train, X_val, y_train, y_val = train_test_split(X_split, y_split, random_state=seed, test_size=ratio_val, shuffle=True)
+	def save_data(self):
+		self.X_train = self.dataset_train.loc[:,"CompTotalEuro"]
+		self.X_val = self.dataset_val.loc[:,"CompTotalEuro"]
+		self.y_train = self.dataset_train.drop("CompTotalEuro", axis=1)
+		self.y_val = self.dataset_train.drop("CompTotalEuro", axis=1)
 
-		self.X_train = X_train
-		self.X_val = X_val
-		self.y_train = y_train.to_frame()
-		self.y_val = y_val.to_frame()
+	# def split_data(self, ratio_test : float = 0.1, ratio_val : float = 0.20, seed : int = 42):
+	# 	y = self.df.loc[:,"CompTotalEuro"]
+	# 	X = self.df.drop("CompTotalEuro", axis=1)
+
+	# 	X_split, X_test, y_split, y_test = train_test_split(X, y, random_state=seed, test_size=ratio_test, shuffle=True)
+
+	# 	self.X_test = X_test
+	# 	self.y_test = y_test.to_frame()
+	# 	X_test.to_csv("./model/datasets/X_test.csv")
+	# 	y_test.to_csv("./model/datasets/y_test.csv")
+
+	# 	X_train, X_val, y_train, y_val = train_test_split(X_split, y_split, random_state=seed, test_size=ratio_val, shuffle=True)
+
+	# 	self.X_train = X_train
+	# 	self.X_val = X_val
+	# 	self.y_train = y_train.to_frame()
+	# 	self.y_val = y_val.to_frame()
 
 
 	
