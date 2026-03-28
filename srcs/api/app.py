@@ -30,13 +30,35 @@ def main():
 			sys.stdout.flush()
 			sys.stderr.flush()
 
+	def _run_inference():
+		import sys
+		sys.stdout.reconfigure(line_buffering=True) if hasattr(sys.stdout, "reconfigure") else None
+		sys.stderr.reconfigure(line_buffering=True) if hasattr(sys.stderr, "reconfigure") else None
+		try:
+			from model.predict import GeneralInferencer
+			salary = GeneralInferencer("./datatsets/inference.csv")
+			print("[predict] Inference completed.", flush=True)
+		except Exception as e:
+			print(f"[predict] Erreur: {e}", flush=True)
+			import traceback
+			traceback.print_exc()
+		finally:
+			sys.stdout.flush()
+			sys.stderr.flush()
+		
+
 	@app.post("/train")
 	def train(background_tasks: BackgroundTasks):
 		background_tasks.add_task(_run_training)
 		return {"status": "training started", "message": "L'entraînement tourne en arrière-plan."}
 
 	@app.post("/predict")
-	def predict():
+	def predict(background_tasks: BackgroundTasks):
+		background_tasks.add_task(_run_inference)
+		return {"status": "inference started", "job_id": job_id, "message": "Inference is running as backgroud process."}
+
+	@app.get("/predict/result/")
+	def predict_result():
 		pass
 
 	return app
