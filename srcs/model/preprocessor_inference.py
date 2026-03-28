@@ -85,10 +85,16 @@ class InferencePreprocessor(BasePreprocessor):
 	def multi_label_encoding(self, initial_features):
 		for feature in initial_features:
 			valid_answers = get_features_answers(feature)
-			nan_placeholder = self.preprocess_state[feature]['nan_placeholder']
-			if nan_placeholder not in valid_answers:
-				valid_answers = [nan_placeholder] + valid_answers
-			data = self.df[feature].str.split(';').apply(lambda x: x if isinstance(x, list) else nan_placeholder)
+			nan_strategy = self.preprocess_state[feature]['nan_strategy']
+
+			if nan_strategy == "placeholder":
+				placeholder = self.preprocess_state[feature]['placeholder']
+				if placeholder not in valid_answers:
+					valid_answers = [placeholder] + valid_answers
+				data = self.df[feature].str.split(';').apply(lambda x: x if isinstance(x, list) else [placeholder])
+			else:
+				data = self.df[feature].str.split(';').apply(lambda x: x if isinstance(x, list) else [])
+
 			encoder = self.preprocess_state[feature]['encoder']
 			encoded = encoder.transform(data)
 

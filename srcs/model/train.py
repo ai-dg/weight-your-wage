@@ -2,6 +2,7 @@ from gc import callbacks
 
 from model.salary_model import SalaryModel
 from dataloader import DataLoaderClass
+from model.preprocessor_training import TrainingPreprocessor
 import lightning as L
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping, LearningRateMonitor, ModelSummary, LearningRateFinder
 from lightning.pytorch.loggers import CSVLogger, MLFlowLogger
@@ -23,7 +24,8 @@ def GeneralTrainer():
 	mlflow.end_run()
 
 	#Import Data turn it into tensors
-	data = DataLoaderClass("./model/datasets/survey_results_public.csv")
+	# data = DataLoaderClass("./model/datasets/survey_results_public.csv")
+	data = TrainingPreprocessor("./model/datasets/survey_results_public.csv")
 	train_dataloader, val_dataloader, test_dataloader = data.load_data_to_torch()
 
 	#Setup Logger
@@ -47,7 +49,10 @@ def GeneralTrainer():
 
 
 	with mlflow.start_run(run_id=mlf_logger.run_id):
-		mlflow.log_artifact(f"preprocessing/{data.preprocess_state['filename']}")
+		mlflow.log_artifact(
+			local_path=data.preprocess_state['filename'],
+			artifact_path="preprocessing"
+			)
 
 	
 	#trainer.test(model=salary_model, dataloaders=test_dataloader)

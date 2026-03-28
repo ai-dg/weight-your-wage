@@ -8,6 +8,7 @@ class SalaryModel(L.LightningModule):
 
 	def __init__(self, nb_features, lr = 1e-3):
 		super().__init__()
+		self.save_hyperparameters()
 		self.base_model = nn.Sequential(
 			nn.Linear(nb_features, 512),
 			nn.BatchNorm1d(512),
@@ -25,7 +26,8 @@ class SalaryModel(L.LightningModule):
 			nn.Linear(32, 1)
 		)
 		self.lr = lr
-		self.r2 = R2Score()
+		self.val_r2_metric = R2Score()
+		self.test_r2_metric = R2Score()
 
 	def forward(self, x):
 		z = self.base_model(x)
@@ -43,8 +45,8 @@ class SalaryModel(L.LightningModule):
 		y_hat = self(x)
 		val_loss = F.mse_loss(y_hat, y)
 		self.log("val_loss", val_loss, on_step=False, on_epoch=True, logger=True, prog_bar=True)
-		val_R2 = self.r2(y_hat, y)
-		self.log("val_R2", val_R2, on_step=False, on_epoch=True, logger=True, prog_bar=True)
+		val_r2 = self.val_r2_metric(y_hat, y)
+		self.log("val_r2", val_r2, on_step=False, on_epoch=True, logger=True, prog_bar=True)
 		# return val_loss
 
 	def test_step(self, batch):
@@ -52,8 +54,8 @@ class SalaryModel(L.LightningModule):
 		y_hat = self(x)
 		test_loss = F.mse_loss(y_hat, y)
 		self.log("test_loss", test_loss, on_step=False, on_epoch=True, logger=True, prog_bar=True)
-		test_R2 = self.r2(y_hat, y)
-		self.log("test_R2", test_R2, on_step=False, on_epoch=True, logger=True, prog_bar=True)
+		test_r2 = self.test_r2_metric(y_hat, y)
+		self.log("test_r2", test_r2, on_step=False, on_epoch=True, logger=True, prog_bar=True)
 
 
 	def predict_step(self, batch, batch_idx):

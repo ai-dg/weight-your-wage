@@ -178,12 +178,17 @@ class TrainingPreprocessor(BasePreprocessor):
 			percentage_nan = self.df[feature].isna().sum() / len(self.df[feature])
 
 			#If Nan > 20% create a new feature "Unknown" else it will put 0 into all expanded features
-			nan_placeholder = feature + "_NaN" if percentage_nan > 0.2 else []
-			if nan_placeholder not in valid_answers:
-				valid_answers = [nan_placeholder] + valid_answers
-
-			data = self.df[feature].str.split(';').apply(lambda x: x if isinstance(x, list) else nan_placeholder)
-			self.preprocess_state[feature]['nan_placeholder'] = nan_placeholder
+			if percentage_nan > 0.2:
+				placeholder = feature + "_NaN"
+				self.preprocess_state[feature]['nan_strategy'] = "placeholder"
+				self.preprocess_state[feature]['placeholder'] = placeholder
+				data = self.df[feature].str.split(';').apply(lambda x: x if isinstance(x, list) else [placeholder])
+				
+				if placeholder not in valid_answers:
+					valid_answers = [placeholder] + valid_answers
+			else:
+				self.preprocess_state[feature]['nan_strategy'] = "ignore"
+				data = self.df[feature].str.split(';').apply(lambda x: x if isinstance(x, list) else [])
 
 			#Use Scikit Learn to Hot One Encode feature (Add new boolean features for each possible answer)
 			#NaN put 0 to every possible answer
