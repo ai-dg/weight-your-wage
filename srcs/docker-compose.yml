@@ -254,3 +254,5 @@ networks:
     driver: bridge
   monitoring:
     driver: bridge
+  model_network:
+    driver: bridge
