@@ -18,7 +18,7 @@ def GeneralInferencer(path):
     run_id = model_version.run_id
 
     preprocess_state_path = mlflow.artifacts.download_artifacts(
-        artifact_uri=f"runs:/{run_id}/preprocess/preprocess_state.pkl"
+        artifact_uri=f"runs:/{run_id}/preprocess/preprocess_state.joblib"
     )
  
     inference = InferencePreprocessor(path, preprocess_state_path)
