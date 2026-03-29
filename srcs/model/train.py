@@ -1,7 +1,7 @@
 from gc import callbacks
 
 from model.salary_model import SalaryModel
-from dataloader import DataLoaderClass
+# from dataloader import DataLoaderClass
 from model.preprocessor_training import TrainingPreprocessor
 import lightning as L
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping, LearningRateMonitor, ModelSummary, LearningRateFinder
@@ -29,6 +29,7 @@ def GeneralTrainer():
 	#Import Data turn it into tensors
 	# data = DataLoaderClass("./model/datasets/survey_results_public.csv")
 	data = TrainingPreprocessor("./model/datasets/survey_results_public.csv")
+	data.run_pipeline()
 	train_dataloader, val_dataloader, test_dataloader = data.load_data_to_torch()
 
 	#Setup Logger
@@ -39,7 +40,8 @@ def GeneralTrainer():
 
 	salary_model = SalaryModel(nb_features=len(data.X_train.columns))
 
-	trainer = L.Trainer(max_epochs=10, logger=mlf_logger, accelerator="cpu", enable_progress_bar=False)
+	# trainer = L.Trainer(max_epochs=10, logger=mlf_logger, accelerator="cpu", enable_progress_bar=False)
+	trainer = L.Trainer(max_epochs=1, logger=mlf_logger, accelerator="cpu", enable_progress_bar=False)
 
 	trainer.fit(
 		model=salary_model,
