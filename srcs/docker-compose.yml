@@ -155,7 +155,7 @@ services:
       - "0.0.0.0:4243:4243"
     #user: "${UID}:${GID}"
     volumes:
-      - source_python:/app/.venv
+      - ${PWD}/.venv:/app/.venv
       - model:/app/model/
 
     networks:
@@ -233,7 +233,7 @@ volumes:
     driver_opts:
       type: none
       o: bind
-      device: ../.venv
+      device: ${PWD}/.venv
 
   prometheus_data:
     driver: local
