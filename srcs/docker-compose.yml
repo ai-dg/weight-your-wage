@@ -204,6 +204,8 @@ services:
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
     ports:
       - "8070:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
     depends_on:
       - postgres
     networks:
@@ -218,6 +220,7 @@ services:
 
 volumes:
   postgres_data:
+  pgadmin_data:
   mlflow-minio:
   model_artifacts:
     driver: local
