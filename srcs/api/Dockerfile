@@ -1,8 +1,9 @@
-FROM debian:latest
+FROM debian:bookworm-slim
 
-RUN apt-get update && apt-get upgrade -y
-
-RUN apt-get install -y curl procps && curl -LsSf https://astral.sh/uv/install.sh | sh
+RUN apt-get update && apt-get upgrade -y && \
+	apt-get install -y curl procps && \
+	curl -LsSf https://astral.sh/uv/install.sh | sh && \
+	rm -rf /var/lib/apt/lists/*
 
 ENV PATH=$PATH:/root/.local/bin
 ENV PYTHONUNBUFFERED=1 

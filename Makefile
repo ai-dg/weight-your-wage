@@ -13,13 +13,6 @@ build: dirs
 	$(COMPOSE) up -d --remove-orphans
 	@bash srcs/scripts/logs/log-finder.sh
 
-re: fclean
-	$(MAKE) dirs
-	$(COMPOSE) build
-	$(COMPOSE) up -d --remove-orphans
-	@bash srcs/scripts/logs/log-finder.sh
-# 	@bash srcs/scripts/dependencies/dependencies_py.sh
-
 up: dirs
 	$(COMPOSE) up -d --remove-orphans
 
@@ -47,9 +40,31 @@ logs-svc:
 dirs:
 	@mkdir -p $(DATA_DIRS)
 
-clean: down
-	$(COMPOSE) down -v
+clean:
+	@echo "Stopping services and removing containers..."
 
-fclean: clean
-	@sudo rm -rf $(DATA_DIRS)
-	@echo "fclean: conteneurs, volumes et données supprimés."
+	@bash srcs/scripts/logs/kill-finder.sh 2>/dev/null || true
+
+	$(COMPOSE) down --remove-orphans
+
+	@echo "clean: Containers, .venv, and data directories wiped."
+
+fclean:
+	@echo "Performing factory reset..."
+
+	@bash srcs/scripts/logs/kill-finder.sh 2>/dev/null || true
+
+	# Remove volumes and all images associated with this project
+	$(COMPOSE) down -v --rmi all --remove-orphans
+
+	# Remove physical data directories created by 'dirs'
+	sudo rm -rf $(DATA_DIRS)
+
+	# Remove the Python virtual environment and lock files
+	sudo rm -rf .venv
+
+	# Optional: Clean up dangling docker build cache
+	docker builder prune -f
+	@echo "fclean: Containers, volumes, images, .venv, and data directories wiped."
+
+re: fclean build
