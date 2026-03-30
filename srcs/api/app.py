@@ -44,7 +44,7 @@ def main():
 		sys.stderr.reconfigure(line_buffering=True) if hasattr(sys.stderr, "reconfigure") else None
 		try:
 			from model.predict import GeneralInferencer
-			salary = GeneralInferencer("./datatsets/inference.csv")
+			salary = GeneralInferencer("./datasets/inference.csv")
 			jobs[job_id]["status"] = "done"
 			jobs[job_id]["salary"] = salary
 			print("[predict] Inference completed.", flush=True)

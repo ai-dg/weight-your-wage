@@ -61,6 +61,7 @@ def GeneralTrainer():
 
 	run_id = mlf_logger.run_id
 	with mlflow.start_run(run_id=run_id):
+		mlflow.set_tracking_uri(MLFLOW_URI) # maybe not necessary
 		mlflow.log_artifact(
 			local_path=data.preprocess_state['filename'],
 			artifact_path="preprocess"
