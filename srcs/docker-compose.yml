@@ -88,21 +88,35 @@ services:
     networks:
       - monitoring
 
-  # ── MinIO (Data Lake & Artifacts) ──────────────────────────────────────────
+  # ── MinIO (Data Lake & Artifacts) + Bucket ──────────────────────────────────────────
   minio:
     container_name: minio
     image: minio/minio:latest
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
-    command: server /data
+    command: server /data --console-address ":9001"
     ports:
-      - "9000:9000"
-    user: "${UID}:${GID}"
+      - "9000:9000" #API
+      - "9001:9001" #WEB UI
     volumes:
       - mlflow-minio:/data
     networks:
       - postgres_network
+      - model_network
+
+  create_buckets:
+    image: minio/mc
+    depends_on:
+      - minio
+    networks:
+      - postgres_network
+    entrypoint: >
+      /bin/sh -c "
+      until (/usr/bin/mc alias set myminio http://minio:9000 minioadmin minioadmin) do echo '...waiting for MinIO...' && sleep 1; done;
+      /usr/bin/mc mb myminio/mlflow-artifacts || true;
+      exit 0;
+      "
 
   # ── Metrics (MLflow) ───────────────────────────────────────────────────────
   mlflow:
@@ -116,35 +130,27 @@ services:
     expose:
       - 5000
     environment:
-      MLFLOW_SERVER_HOST: 0.0.0.0
-      MLFLOW_SERVER_PORT: 5000
-      BACKEND_STORE_URI: postgresql+psycopg2://mlflow:mlflow@postgres_db:5432/mlflowdb
-      # ARTIFACT_ROOT: s3://mlflow-artifacts
-      # AWS_ACCESS_KEY_ID: minioadmin
-      # AWS_SECRET_ACCESS_KEY: minioadmin
-      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
-
-      MLFLOW_USER: ${DB_MLFLOW_USER}
-      MLFLOW_PASSWORD: ${DB_MLFLOW_PASSWORD}
-      MLFLOW_DB: ${DB_MLFLOW_NAME}
+      - MLFLOW_SERVER_HOST=0.0.0.0
+      - MLFLOW_SERVER_PORT=5000
+      - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - MLFLOW_S3_IGNORE_TLS=true
       
-      # --default-artifact-root s3://mlflow-artifacts
     command: >
       mlflow server 
       --backend-store-uri postgresql://${DB_MLFLOW_USER}:${DB_MLFLOW_PASSWORD}@postgres:5432/${DB_MLFLOW_NAME}
-      --default-artifact-root /mlflow/artifacts
+      --default-artifact-root s3://${MLFLOW_BUCKET_NAME}/
       --host 0.0.0.0 
       --port 5000
     depends_on:
       postgres:
         condition: service_healthy
-      # minio:
-      #   condition: service_started
+      minio:
+        condition: service_started
     networks:
       - postgres_network
       - model_network
-    volumes:
-      - model_artifacts:/mlflow/artifacts
 
   # ── API ────────────────────────────────────────────────────────────────────
   fastapi:
@@ -152,6 +158,11 @@ services:
     build:
       context: ..
       dockerfile: srcs/api/Dockerfile
+      network: host
+    environment:
+      - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
     expose:
       - 4243
     ports:
@@ -211,23 +222,10 @@ services:
     networks:
       - postgres_network
 
-  # ── Frontend ───────────────────────────────────────────────────────────────
-  streamlite:
-    container_name: streamlite
-    build:
-      context: ./services/streamlite
-      dockerfile: Dockerfile
-
 volumes:
   postgres_data:
   pgadmin_data:
   mlflow-minio:
-  model_artifacts:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${PWD}/srcs/data/artifacts
   model:
     driver: local
     driver_opts:
