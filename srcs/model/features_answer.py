@@ -374,7 +374,7 @@ def get_features_answers(feature: str):
 		case "AIAgents":
 			return [
 				"Yes, I use AI agents at work daily",
-				"es, I use AI agents at work weekly",
+				"Yes, I use AI agents at work weekly",
 				"Yes, I use AI agents at work monthly or infrequently",
 				"No, I use AI exclusively in copilot/autocomplete mode",
 				"No, but I plan to",
