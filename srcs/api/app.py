@@ -44,7 +44,7 @@ def main():
 		sys.stderr.reconfigure(line_buffering=True) if hasattr(sys.stderr, "reconfigure") else None
 		try:
 			from model.predict import GeneralInferencer
-			salary = GeneralInferencer("./datasets/inference.csv")
+			salary = GeneralInferencer("./model/datasets/inference.csv")
 			jobs[job_id]["status"] = "done"
 			jobs[job_id]["salary"] = salary
 			print("[predict] Inference completed.", flush=True)
@@ -84,7 +84,7 @@ def main():
 		background_tasks.add_task(_run_inference, job_id=job_id)
 		return {
 			"status": "inference started",
-				"job_id": job_id,
+			"job_id": job_id,
 			"message": "Inference is running in the background."
 		}
 

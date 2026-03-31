@@ -38,4 +38,4 @@ def GeneralInferencer(path):
     return salary
     
 if __name__ == "__main__" :
-    GeneralInferencer("./datasets/inference.csv")
+    GeneralInferencer("./model/datasets/inference.csv")

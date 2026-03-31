@@ -12,6 +12,7 @@ import lightning as L
 from torch import tensor, float32
 from model.preprocessor_base import BasePreprocessor
 
+import sys
 
 class InferencePreprocessor(BasePreprocessor):
 	def __init__(self, inference_path, preprocess_state_path):
@@ -83,12 +84,21 @@ class InferencePreprocessor(BasePreprocessor):
 			self.df.drop(columns=[feature], inplace=True)
 	
 	def multi_label_encoding(self, initial_features):
+		sys.stdout.reconfigure(line_buffering=True) if hasattr(sys.stdout, "reconfigure") else None
+		sys.stderr.reconfigure(line_buffering=True) if hasattr(sys.stderr, "reconfigure") else None
+		print(self.preprocess_state, flush=True)
+		sys.stdout.flush()
 		for feature in initial_features:
 			valid_answers = get_features_answers(feature)
 			nan_strategy = self.preprocess_state[feature]['nan_strategy']
+			print(f"Processing feature '{feature}' with NaN strategy '{nan_strategy}'", flush=True)
+			print(f"nan_strategy type: {type(nan_strategy)}, valid_answers type: {type(valid_answers)}", flush=True)
+			sys.stdout.flush()
 
 			if nan_strategy == "placeholder":
 				placeholder = self.preprocess_state[feature]['placeholder']
+				print(f"Using placeholder '{placeholder}' for NaN values in feature '{feature}'", flush=True)
+				sys.stdout.flush()
 				if placeholder not in valid_answers:
 					valid_answers = [placeholder] + valid_answers
 				data = self.df[feature].str.split(';').apply(lambda x: x if isinstance(x, list) else [placeholder])

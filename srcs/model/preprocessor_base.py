@@ -132,10 +132,6 @@ class BasePreprocessor(L.LightningDataModule, ABC):
 	def normalize_by_standard(self):
 		pass
 	
-	@abstractmethod
-	def load_data_to_torch(self):
-		pass
-
 	def __str__(self):
 		resume = f"{self.df}"
 		columns = f"{self.df.columns}"
