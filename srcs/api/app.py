@@ -13,6 +13,9 @@ def main():
 	app.include_router(fastapi.APIRouter())
 	app.get("/")(lambda: {"message": "Hello World"})
 
+	def _run_test(job_id: str):
+		pass
+
 	def _run_training(job_id: str):
 		import sys
 		import logging
@@ -73,6 +76,21 @@ def main():
 			"message": "Training is running in the background."
 		}
 
+	@app.post("/jobs/test")
+	def test(background_tasks: BackgroundTasks):
+		job_id = str(uuid.uuid4())
+		jobs[job_id] = {
+			"task": "train",
+			"status": "pending",
+			"created_at": str(datetime.datetime.now())
+		}
+		background_tasks.add_task(_run_test, job_id=job_id)
+		return {
+			"status": "test started",
+			"job_id": job_id,
+			"message": "Test is running in the background."
+		}
+
 	@app.post("/jobs/predict")
 	def predict(background_tasks: BackgroundTasks):
 		job_id = str(uuid.uuid4())
@@ -100,6 +118,7 @@ def main():
 				}
 			)
 		return jobs[job_id]
+	
 
 	return app
 

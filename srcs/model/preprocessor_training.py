@@ -11,23 +11,100 @@ import joblib
 import lightning as L
 from torch import tensor, float32
 from model.preprocessor_base import BasePreprocessor
-
+from sklearn.compose import ColumnTransformer
+from scikit_encoder import SmartOrdinalEncoder, SmartMultilabelEncoder, SmartOneHotEncoder
+from sklearn.impute import SimpleImputer
+from sklearn.pipeline import Pipeline
 
 class TrainingPreprocessor(BasePreprocessor):
-	def __init__(self, path):
-		super().__init__(path)
-		#Clean Currency
-		self.df = self.df.dropna(subset="CompTotal")
-		# /!\ handle when df is empty
 
+	def __init__(self, path):
+		try :
+			self.df = pd.read_csv(path)
+			self.features = get_features()
+			self.df = self.df[self.features].copy()
+			self.preprocess_state = {}
+		except Exception as e :
+			print(f"Error : {e}")
+			raise RuntimeError(f"Error : {e}")
+
+
+	######################################################################
+	##### 						CLEAN DATA							 #####
+	######################################################################
+	def init_encoder(self):
+		need_numerical_encoding = ["WorkExp", "YearsCode"]
+
+		need_binary_encoding = [
+								"LanguageChoice",
+								"DatabaseChoice",
+								"PlatformChoice",
+								"WebframeChoice",
+								"DevEnvsChoice",
+								"AIModelsChoice"
+								]
+
+		#Ordinal Encode every Nominal Features by order of importance
+		need_ordinal_encoding = ["EdLevel", "AISelect"]
+
+		#One hot encode every Nominal Features with no order importance
+		need_hot_encoding = [
+							"MainBranch",
+							"Age",
+							"Employment",
+							"DevType",
+							"OrgSize",
+							"ICorPM",
+							"RemoteWork",
+							"Industry",
+							"AIAgents",
+							"LearnCodeAI"
+							]
+
+		need_multi_label_encoding = [
+									"LearnCode",
+									"LanguageHaveWorkedWith",
+									"DatabaseHaveWorkedWith",
+									"PlatformHaveWorkedWith",
+									"WebframeHaveWorkedWith",
+									"DevEnvsHaveWorkedWith"
+									]
+		
+		need_target_encoding = ["Country"]
+
+		self.df = self.df.dropna(subset="CompTotal")
 		self.df.loc[:, "Currency"] = self.df["Currency"].apply(self.erase_str)
 		self.update_currency()
 
+		num_pipeline = Pipeline([
+			('imputer', SimpleImputer(strategy='median')),
+			('scaler', StandardScaler())
+		])
+  
+		self.ct = ColumnTransformer(transformers=[
+			('numerical', SimpleImputer(strategy='median'), need_numerical_encoding),
+			('binary', OrdinalEncoder(), need_binary_encoding),
+			('ordinal', SmartOrdinalEncoder(), need_ordinal_encoding),
+			('one_hot', SmartOneHotEncoder(), need_hot_encoding),
+			('multi_label', SmartMultilabelEncoder(), need_multi_label_encoding),
+			('target', TargetEncoder(smoothing=10.0), need_target_encoding),
+		])
+
+		# split
+
+	def __str__(self):
+		resume = f"{self.df}"
+		columns = f"{self.df.columns}"
+
+		return resume + "\n" + columns
 
 	def run_pipeline(self):
-		self.clean_data()
+		self.init_encoder()
 		X, y  = self.extract_target()
 		self.split_data(X, y)
+		self.ct.fit_transform(self.X_train, self.y_train)
+		self.ct.transform(self.X_val, self.y_val)
+
 		self.preprocess_state["feature_order"] = X.columns.tolist()
 		self.normalize_by_standard()
 		self.preprocess_state['filename'] = "preprocess_state.joblib"
@@ -86,149 +163,6 @@ class TrainingPreprocessor(BasePreprocessor):
 		self.df[feature] = self.df[feature].fillna(most_frequent)
 		return most_frequent
 
-	######################################################################
-	##### 						ENCODING							 #####
-	######################################################################
-	
-
-	def numerical_encoding(self, features: list[str]):
-		for feature in features:
-
-			#For Numerical Encoding replace NaN with most median value
-			self.preprocess_state[feature] = {}
-			self.preprocess_state[feature]['median'] = self.replace_nan_median(feature)
-
-	def ordinal_encoding(self, initial_features: list[str]):
-		for feature in initial_features:
-			self.preprocess_state[feature] = {}
-
-			percentage_nan = self.df[feature].isna().sum() / len(self.df[feature])
-			valid_answers = get_features_answers(feature)
-
-			#If Nan > 20% set NaN value to -1 else replace them with the most frequent value
-			if (percentage_nan > 0.2):
-				placeholder = feature + "_NaN"
-				self.df[feature] = self.df[feature].fillna(placeholder)
-
-				if placeholder not in valid_answers:
-					valid_answers = [placeholder] + valid_answers
-				self.preprocess_state[feature]['nan_strategy'] = "placeholder"
-				self.preprocess_state[feature]['placeholder'] = placeholder
-			else:	
-				self.preprocess_state[feature]['nan_strategy'] = "most_frequent"
-				self.preprocess_state[feature]['most_frequent'] = self.replace_nan_frequent(feature)
-
-			encoder = OrdinalEncoder(categories=[valid_answers],
-							handle_unknown='use_encoded_value',
-							unknown_value=-1)
-			self.df[feature] = encoder.fit_transform(self.df[[feature]])
-
-			self.preprocess_state[feature]['encoder'] = encoder
-
-	def one_hot_encoding(self, initial_features: list[str]):
-		for feature in initial_features:
-			self.preprocess_state[feature] = {}
-
-			valid_answers = get_features_answers(feature)
-
-			percentage_nan = self.df[feature].isna().mean()
-
-			if percentage_nan > 0.2:
-				placeholder = feature + "_NaN"
-				self.df[feature] = self.df[feature].fillna(placeholder)
-
-				if placeholder not in valid_answers:
-					valid_answers = [placeholder] + valid_answers
-
-				self.preprocess_state[feature]['nan_strategy'] = "placeholder"
-				self.preprocess_state[feature]['placeholder'] = placeholder
-			else:
-				self.preprocess_state[feature]['nan_strategy'] = "most_frequent"
-				self.preprocess_state[feature]['most_frequent'] = self.replace_nan_frequent(feature)
-
-			data = self.df[[feature]]
-
-			encoder = OneHotEncoder(
-				categories=[valid_answers],
-				drop='first',
-				handle_unknown='ignore',
-				sparse_output=False,
-				dtype=int
-			)
-
-			encoded = encoder.fit_transform(data)
-
-			encoded_columns = [f"{feature}_{i}" for i in range(1, encoded.shape[1] + 1)]
-			encoded_df = pd.DataFrame(encoded, columns=encoded_columns, index=self.df.index)
-
-			self.df = pd.concat([self.df, encoded_df], axis=1)
-			self.df.drop(columns=[feature], inplace=True)
-
-			self.preprocess_state[feature]['encoder'] = encoder
-			self.preprocess_state[feature]['encoded_columns'] =  encoded_columns
-
-
-	def multi_label_encoding(self, initial_features: list[str]):
-		for i, feature in enumerate(initial_features):
-			self.preprocess_state[feature] = {}
-
-			valid_answers = get_features_answers(feature)
-
-			#Calculate the percentage of NaN for the current feature
-			percentage_nan = self.df[feature].isna().sum() / len(self.df[feature])
-
-			#If Nan > 20% create a new feature "Unknown" else it will put 0 into all expanded features
-			if percentage_nan > 0.2:
-				placeholder = feature + "_NaN"
-				self.preprocess_state[feature]['nan_strategy'] = "placeholder"
-				self.preprocess_state[feature]['placeholder'] = placeholder
-				data = self.df[feature].str.split(';').apply(lambda x: x if isinstance(x, list) else [placeholder])
-				
-				if placeholder not in valid_answers:
-					valid_answers = [placeholder] + valid_answers
-			else:
-				self.preprocess_state[feature]['nan_strategy'] = "ignore"
-				data = self.df[feature].str.split(';').apply(lambda x: x if isinstance(x, list) else [])
-
-			#Use Scikit Learn to Hot One Encode feature (Add new boolean features for each possible answer)
-			#NaN put 0 to every possible answer
-			mlb = MultiLabelBinarizer(classes=valid_answers)
-
-			res = mlb.fit_transform(data)
-
-			self.preprocess_state[feature]['encoder'] = mlb
-
-			#Create genereic name for the new columns
-			expanded_features_name = [f"{feature}_{i}" for i in range(1, len(valid_answers) + 1)]
-			self.preprocess_state[feature]['encoded_columns'] =  expanded_features_name
-
-			#Transform new columns into a Dataframe
-			expanded_df = pd.DataFrame(res, columns=expanded_features_name, index=self.df.index)
-
-			#Add extra invalid answers into a new column feature_Other
-			valid_set = set(valid_answers)
-
-			other_type = feature + "_Other"
-			self.preprocess_state[feature]['other'] = other_type
-		
-			self.df[other_type] = data.apply(
-				lambda x: 1 if any(item not in valid_set for item in x) else 0
-			)
-
-			#Add Expanded Features Dataframe to the initial dataset
-			self.df = pd.concat([self.df, expanded_df], axis=1)
-
-		#Drop Initial Features
-		self.df.drop(columns=initial_features, inplace=True)
-
-	def target_encoding(self, features: list[str]):
-		for feature in features:
-			self.preprocess_state[feature] = {}
-
-			encoder = TargetEncoder(cols=[feature], smoothing=10.0)
-			result = encoder.fit_transform(self.df[[feature]], self.df["CompTotalEuro"])
-			self.preprocess_state[feature]['encoder'] = encoder
-			self.df[feature] = result[feature]	
 
 	def extract_target(self):
 		"""
@@ -296,12 +230,9 @@ class TrainingPreprocessor(BasePreprocessor):
 		y_tensor_val = tensor(self.y_val_scaled, dtype=float32)
 		y_tensor_test = tensor(self.y_test_scaled, dtype=float32)
 
-
-
 		tensor_dataset_train = TensorDataset(X_tensor_train, y_tensor_train)
 		tensor_dataset_val = TensorDataset(X_tensor_val, y_tensor_val)
 		tensor_dataset_test = TensorDataset(X_tensor_test, y_tensor_test)
-
 
 		Train_loader = DataLoader(tensor_dataset_train, batch_size=32, shuffle=True)
 		Val_loader = DataLoader(tensor_dataset_val, batch_size=32)
@@ -314,6 +245,7 @@ class TrainingPreprocessor(BasePreprocessor):
 def main():
 	datapreprocess = TrainingPreprocessor("./model/datasets/survey_results_public.csv")
 	datapreprocess.df.to_csv("Temp.csv")
+
 
 	# EDA = profile = ProfileReport(datapreprocess.df, title="Data (After Cleaning)")
 	# profile.to_file("reports/data_analysis.html")

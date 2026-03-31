@@ -6,3 +6,4 @@ datasets/
 .venv
 srcs/data
 __pycache__
+mlruns
