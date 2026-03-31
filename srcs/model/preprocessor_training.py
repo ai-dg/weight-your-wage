@@ -10,98 +10,31 @@ from sklearn.model_selection import train_test_split
 import joblib
 import lightning as L
 from torch import tensor, float32
+from model.preprocessor_base import BasePreprocessor
 
 
-def erase_str(value :str):
-	return value[:3]
-
-class DataLoaderClass(L.LightningDataModule):
-
+class TrainingPreprocessor(BasePreprocessor):
 	def __init__(self, path):
-		super().__init__()
-		try :
-			self.df = pd.read_csv(path)
-			self.features = get_features()
-		except Exception as e :
-			print(f"Error : {e}")
-			raise RuntimeError(f"Error : {e}")
-		
+		super().__init__(path)
+		#Clean Currency
+		self.df = self.df.dropna(subset="CompTotal")
+		# /!\ handle when df is empty
+
+		self.df.loc[:, "Currency"] = self.df["Currency"].apply(self.erase_str)
+		self.update_currency()
+
+
+	def run_pipeline(self):
 		self.clean_data()
 		self.split_data()
 		self.normalize_by_standard()
 		# self.
-
-	######################################################################
-	##### 						CLEAN DATA							 #####
-	######################################################################
 	
-
-	def clean_data(self):
-		self.df = self.df[self.features].copy()
-
-		#Clean Currency
-		self.df = self.df.dropna(subset="CompTotal")
-		self.df.loc[:, "Currency"] = self.df["Currency"].apply(erase_str)
-		self.update_currency()
-
-		need_numerical_encoding = ["WorkExp", "YearsCode"]
-
-		need_binary_encoding = [
-								"LanguageChoice",
-								"DatabaseChoice",
-								"PlatformChoice",
-								"WebframeChoice",
-								"DevEnvsChoice",
-								"AIModelsChoice"
-								]
-
-		#Ordinal Encode every Nominal Features by order of importance
-		need_ordinal_encoding = ["EdLevel", "AISelect"]
-
-		#One hot encode every Nominal Features with no order importance
-		need_hot_encoding = [
-							"MainBranch",
-							"Age",
-							"Employment",
-							"DevType",
-							"OrgSize",
-							"ICorPM",
-							"RemoteWork",
-							"Industry",
-							"AIAgents",
-							"LearnCodeAI"
-							]
-
-		need_multi_label_encoding = [
-									"LearnCode",
-									"LanguageHaveWorkedWith",
-									"DatabaseHaveWorkedWith",
-									"PlatformHaveWorkedWith",
-									"WebframeHaveWorkedWith",
-									"DevEnvsHaveWorkedWith"
-									]
-		
-		need_target_encoding = ["Country"]
-
-
-		self.numerical_encoding(need_numerical_encoding)
-		self.binary_encoding(need_binary_encoding)
-		self.ordinal_encoding(need_ordinal_encoding)
-		self.one_hot_encoding(need_hot_encoding)
-		self.multi_label_encoding(need_multi_label_encoding)
-		self.target_encoding(need_target_encoding)
-
-
 	def update_currency(self):
 		"""
 			Convert CompTotal to Euro, then drop CompTotal and Currency features.
 
 			Outliers are filtered out.
-			
-			Args:
-				None
-			Returns:
-				None
 		"""
 
 		Salary_min = 1000
@@ -139,17 +72,16 @@ class DataLoaderClass(L.LightningDataModule):
 	######################################################################
 	##### 						UTILS								 #####
 	######################################################################
-	def drop_features(self, features:list[str]):
-		self.df.drop(columns=features, inplace=True)
-
 
 	def replace_nan_median(self, feature: str):
 		median = self.df[feature].median()
 		self.df[feature] = self.df[feature].fillna(median)
+		return median
 
 	def replace_nan_frequent(self, feature: str):
 		most_frequent = self.df[feature].mode()[0]
 		self.df[feature] = self.df[feature].fillna(most_frequent)
+		return most_frequent
 
 	######################################################################
 	##### 						ENCODING							 #####
@@ -160,7 +92,7 @@ class DataLoaderClass(L.LightningDataModule):
 		for feature in features:
 
 			#For Numerical Encoding replace NaN with most median value
-			self.replace_nan_median(feature)
+			self.preprocess_state[feature]['median'] = self.replace_nan_median(feature)
 
 	def ordinal_encoding(self, initial_features: list[str]):
 		for feature in initial_features:
@@ -175,24 +107,18 @@ class DataLoaderClass(L.LightningDataModule):
 
 				if placeholder not in valid_answers:
 					valid_answers = [placeholder] + valid_answers
+				self.preprocess_state[feature]['nan_strategy'] = "placeholder"
+				self.preprocess_state[feature]['placeholder'] = placeholder
 			else:	
-				self.replace_nan_frequent(feature)
+				self.preprocess_state[feature]['nan_strategy'] = "most_frequent"
+				self.preprocess_state[feature]['most_frequent'] = self.replace_nan_frequent(feature)
 
 			encoder = OrdinalEncoder(categories=[valid_answers],
 							handle_unknown='use_encoded_value',
 							unknown_value=-1)
-
 			self.df[feature] = encoder.fit_transform(self.df[[feature]])
 
-	def binary_encoding(self, features: list[str]):
-		for feature in features:
-			#Replace NaN Value by False
-			self.df[feature] = self.df[feature].fillna(0)
-
-			self.df[feature] = self.df[feature].replace("Yes", 1)
-			self.df[feature] = self.df[feature].replace("No", 0)
-			
-
+			self.preprocess_state[feature]['encoder'] = encoder
 
 	def one_hot_encoding(self, initial_features: list[str]):
 		for feature in initial_features:
@@ -328,16 +254,9 @@ class DataLoaderClass(L.LightningDataModule):
 
 		return Train_loader, Val_loader, Test_loader			
 
-	def __str__(self):
-		resume = f"{self.df}"
-		columns = f"{self.df.columns}"
-
-		return resume + "\n" + columns
-	
-	
 
 def main():
-	datapreprocess = DataLoaderClass("./model/datasets/survey_results_public.csv")
+	datapreprocess = TrainingPreprocessor("./model/datasets/survey_results_public.csv")
 	datapreprocess.df.to_csv("Temp.csv")
 
 	# EDA = profile = ProfileReport(datapreprocess.df, title="Data (After Cleaning)")
