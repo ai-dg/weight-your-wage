@@ -2,7 +2,8 @@ import pandas as pd
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.preprocessing import MultiLabelBinarizer, OrdinalEncoder, OneHotEncoder 
-from model.features_answer import get_features, get_features_answers
+from features_answer import get_features, get_features_answers
+# from model.features_answer import get_features, get_features_answers
 
 class SmartOrdinalEncoder(BaseEstimator, TransformerMixin):
     def __init__(self, threshold=0.2):
@@ -32,19 +33,19 @@ class SmartOrdinalEncoder(BaseEstimator, TransformerMixin):
                 handle_unknown='use_encoded_value',
                 unknown_value=-1
             )
-            encoder.fit([v] for v in valid_answers)
+            encoder.fit([[v] for v in valid_answers])
             self.feature_metadata[feature]['encoder'] = encoder
         return self
 
     def transform(self, X):
         X = pd.DataFrame(X).copy()
+        all_encoded_results = []
         
         for feature, meta in self.feature_metadata.items():
-            X[feature] = X[feature].fillna(meta['fill_value'])
-            
-            X[feature] = pd.DataFrame(['encoder'].transform(X[[feature]]))
-            
-        return X
+            col_data  = X[feature].fillna(meta['fill_value']).values.reshape(-1,1)
+            encoded_col = meta['encoder'].transform(col_data)
+            all_encoded_results.append(encoded_col)
+        return np.hstack(all_encoded_results)
 
 class SmartOneHotEncoder(BaseEstimator, TransformerMixin):
     def __init__(self, threshold=0.2):
@@ -75,20 +76,20 @@ class SmartOneHotEncoder(BaseEstimator, TransformerMixin):
                 sparse_output=False,
                 dtype=int
             )
-            encoder.fit([v] for v in valid_answers)
+            encoder.fit([[v] for v in valid_answers])
             self.feature_metadata[feature]['encoder'] = encoder
             self.feature_metadata[feature]['categories'] = valid_answers[1:]
         return self
 
     def transform(self, X, y=None):
         X = pd.DataFrame(X).copy()
+        all_encoded_results = []
 
         for feature, meta in self.feature_metadata.items():
-            X[feature] = X[feature].fillna(meta['fill_value'])
-            encoded_df = pd.DataFrame(meta['encoder'].transform(X[[feature]]))
-            X = pd.concat([X, encoded_df], axis=1)
-            X.drop(columns=[feature], inplace=True)
-        return X
+            col_data = X[feature].fillna(meta['fill_value']).values.reshape(-1, 1)
+            encoded_col = meta['encoder'].transform(col_data)
+            all_encoded_results.append(encoded_col)
+        return np.hstack(all_encoded_results)
 
 class SmartMultilabelEncoder(BaseEstimator, TransformerMixin):
     def __init__(self, threshold=0.2):
@@ -123,7 +124,7 @@ class SmartMultilabelEncoder(BaseEstimator, TransformerMixin):
         all_encoded_results = []
         
         for feature, meta in self.feature_metadata.items():
-            valid_answers= meta['valid_answers']
+            valid_answers = meta['valid_answers']
             column_data = X[feature].fillna("").astype(str)
             list_data = [[item.strip() for item in val.split(';') if item.strip()] 
                          if val != "" else meta['fill_value'] 
