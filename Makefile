@@ -8,11 +8,10 @@ endif
 
 DATA_DIRS = srcs/data/postgres srcs/data/postgres_mlflow srcs/data/minio srcs/data/artifacts srcs/logs
 
-.PHONY: build up down downv logs stop start clean fclean dirs
+.PHONY: build up down downv logs stop start clean fclean dirs fix-perms
 
-build: dirs
-	sudo chmod 777 -R ./*
-	sudo chown -R $$(whoami):$$(whoami) .venv 2>/dev/null || true
+
+build: dirs fix-perms
 	if [ "$(NODE_ENV)" = "PROD" ]; then \
 		$(MAKE) dependencies-py; \
 		$(COMPOSE) build; \
@@ -24,6 +23,10 @@ build: dirs
 		$(COMPOSE) --profile dev up -d --remove-orphans; \
 		$(MAKE) logs-finder; \
 	fi
+
+fix-perms:
+	@sudo chown -R $$(id -u):$$(id -g) .venv srcs/data srcs/model srcs/logs 2>/dev/null || true
+
 
 re: clean build
 
@@ -88,5 +91,6 @@ dependencies-py:
 
 
 fclean: clean
+	$(MAKE) fix-perms
 	@rm -rf $(DATA_DIRS)
 	@echo "fclean: conteneurs, volumes et données supprimés."

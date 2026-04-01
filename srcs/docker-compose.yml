@@ -71,15 +71,18 @@ services:
     build:
       context: ..
       dockerfile: srcs/api/Dockerfile
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
     expose:
       - 4243
     ports:
       - "0.0.0.0:4243:4243"
-    #user: "${UID}:${GID}"
+    user: "${UID}:${GID}"
     volumes:
-      - source_python:/app/.venv
+      # - source_python:/app/.venv
       - model:/app/model/
-
+      - api:/app/api/
     networks:
       - model_network
 
@@ -178,6 +181,12 @@ volumes:
       type: none
       o: bind
       device: ${PWD}/srcs/model
+  api:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/srcs/api
   source_python:
     driver: local
     driver_opts:

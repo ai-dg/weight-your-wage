@@ -1,6 +1,7 @@
 import fastapi
 from fastapi import FastAPI, BackgroundTasks
 from fastapi import Request
+import pandas as pd
 
 
 def main():
@@ -49,10 +50,13 @@ def main():
 				print(f"[predict] reçu {len(body)} champs: {list(body.keys())}", flush=True)
 			else:
 				print(f"[predict] reçu type={type(body).__name__}", flush=True)
+		df = pd.DataFrame([body])
+		df.to_csv("./model/inference.csv")
 		return {
 			"message": "prediction started",
 			"received": body,
 		}
+
 
 	return app
 

@@ -5,11 +5,24 @@ import lightning as L
 from ydata_profiling import ProfileReport
 from sklearn.preprocessing import MultiLabelBinarizer, OrdinalEncoder, OneHotEncoder, StandardScaler, scale
 from category_encoders import TargetEncoder
-from model.features_answer import get_features, get_features_answers
+import sys
+from pathlib import Path
+
+try:
+	from model.features_answer import get_features, get_features_answers
+except ModuleNotFoundError:
+	# Permet l'execution directe du script: python/uv run ./model/dataloader.py
+	srcs_root = Path(__file__).resolve().parent.parent
+	if str(srcs_root) not in sys.path:
+		sys.path.insert(0, str(srcs_root))
+	from model.features_answer import get_features, get_features_answers
 from sklearn.model_selection import train_test_split 
 import joblib
 import lightning as L
 from torch import tensor, float32
+
+MODEL_DIR = Path(__file__).resolve().parent
+DATASETS_DIR = MODEL_DIR / "datasets"
 
 
 def erase_str(value :str):
@@ -25,7 +38,7 @@ class DataLoaderClass(L.LightningDataModule):
 		except Exception as e :
 			print(f"Error : {e}")
 			raise RuntimeError(f"Error : {e}")
-		
+		# print(np.sort(self.df["LanguageHaveWorkedWith"].dropna().unique()))		
 		self.clean_data()
 		self.split_data()
 		self.normalize_by_standard()
@@ -110,7 +123,11 @@ class DataLoaderClass(L.LightningDataModule):
 		# Use float64 limit as a ceiling
 		FLOAT_MAX = np.finfo(np.float64).max
 
-		currency_table  = pd.read_csv("./model/datasets/currency_2025.csv")
+		currency_path = DATASETS_DIR / "currency_2025.csv"
+		if not currency_path.exists():
+			# Backward compatibility: historical typo in filename.
+			currency_path = DATASETS_DIR / "currecy_2025.csv"
+		currency_table  = pd.read_csv(currency_path)
 
 		# Convert CompTotalEuro with its attached currency
 		series_rate = currency_table.set_index("currency")['Value']
@@ -129,7 +146,7 @@ class DataLoaderClass(L.LightningDataModule):
 		mask = (self.df["CompTotalEuro"] >= Salary_min) & (self.df["CompTotalEuro"] <= Salary_max)
 		self.df = self.df[mask].copy()
 
-		self.df.to_csv("./model/datasets/result_clean.csv")
+		self.df.to_csv(DATASETS_DIR / "result_clean.csv")
 		
 		# Delete the features Currency and CompTotal
 		self.drop_features(["Currency", "CompTotal"])
@@ -337,8 +354,10 @@ class DataLoaderClass(L.LightningDataModule):
 	
 
 def main():
-	datapreprocess = DataLoaderClass("./model/datasets/survey_results_public.csv")
-	datapreprocess.df.to_csv("Temp.csv")
+	datapath = DATASETS_DIR / "survey_results_public.csv"
+	datapreprocess = DataLoaderClass(datapath)
+	datapreprocess.df.to_csv(MODEL_DIR / "Temp.csv")
+
 
 	# EDA = profile = ProfileReport(datapreprocess.df, title="Data (After Cleaning)")
 	# profile.to_file("reports/data_analysis.html")

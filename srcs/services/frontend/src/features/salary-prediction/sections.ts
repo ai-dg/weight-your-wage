@@ -5,7 +5,7 @@ export const salaryPredictionSections: SectionDefinition[] = [
     id: "profile",
     title: "Profile",
     description: "Informations personnelles et parcours global.",
-    fields: ["MainBranch", "Age", "EdLevel", "Country", "Currency"]
+    fields: ["MainBranch", "Age", "EdLevel", "Country"]
   },
   {
     id: "work-context",
@@ -19,8 +19,7 @@ export const salaryPredictionSections: SectionDefinition[] = [
       "OrgSize",
       "ICorPM",
       "RemoteWork",
-      "Industry",
-      "CompTotal"
+      "Industry"
     ]
   },
   {

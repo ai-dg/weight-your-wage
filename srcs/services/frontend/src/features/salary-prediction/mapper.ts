@@ -2,7 +2,7 @@ import type { SalaryPredictionPayload } from "./types";
 
 type RawFormData = Record<keyof SalaryPredictionPayload, string>;
 
-const parseList = (value: string): string[] =>
+export const parseList = (value: string): string[] =>
   value
     .split(/[;,]/)
     .map((item) => item.trim())
