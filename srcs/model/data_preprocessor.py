@@ -305,6 +305,12 @@ class SalaryDataModule(L.LightningDataModule):
 			)
 		return DataLoader(dataset, batch_size=self.batch_size)
 
+	def predict_dataloader(self):
+		dataset = TensorDataset(
+			torch.tensor(self.X_predict_scaled, dtype=torch.float32),
+			)
+		return DataLoader(dataset, batch_size=self.batch_size)
+
 	def val_dataloader(self):
 		dataset = TensorDataset(
 			torch.tensor(self.X_val_scaled, dtype=torch.float32),

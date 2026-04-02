@@ -36,12 +36,12 @@ def GeneralTrainer():
 	salary_data_module.setup(stage="fit")
 	salary_model = SalaryModel(nb_features=salary_data_module.nb_features)
 
-	# trainer = L.Trainer(max_epochs=10, logger=mlf_logger, accelerator="cpu", enable_progress_bar=False)
 	callbacks = [
 			EarlyStopping(monitor="val_loss", mode="min", patience=5, verbose=True),
 	]
 	trainer = L.Trainer(
-		max_epochs=100,
+		#max_epochs=100,
+		max_epochs=1,
 		logger=mlf_logger,
 		accelerator="cpu",
 		enable_progress_bar=False,

@@ -4,6 +4,7 @@ from mlflow.tracking import MlflowClient
 import mlflow
 import torch
 import lightning as L
+import os
 
 MODEL_NAME = "salary_predictor"
 CHAMPION_ALIAS = "champion"
@@ -20,13 +21,15 @@ def GeneralInferencer(path):
 
     salary_data_module = SalaryDataModule(path)
 
+    os.system(f"rm -rf {salary_data_module.fit_encoder_filename} {salary_data_module.target_scaler_filename}")
+
     mlflow.artifacts.download_artifacts(
         artifact_uri=f"runs:/{run_id}/preprocess/{salary_data_module.fit_encoder_filename}",
-        dst_path=salary_data_module.fit_encoder_filename
+        dst_path="./"
     )
     mlflow.artifacts.download_artifacts(
         artifact_uri=f"runs:/{run_id}/preprocess/{salary_data_module.target_scaler_filename}",
-        dst_path=salary_data_module.target_scaler_filename
+        dst_path="./"
     )
 
     salary_model = mlflow.pytorch.load_model(f"models:/{MODEL_NAME}@{CHAMPION_ALIAS}")
