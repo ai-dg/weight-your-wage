@@ -78,7 +78,9 @@ services:
       - 4243
     ports:
       - "0.0.0.0:4243:4243"
-    user: "${UID}:${GID}"
+    environment:
+      APP_UID: ${UID:-1000}
+      APP_GID: ${GID:-1000}
     volumes:
       # - source_python:/app/.venv
       - model:/app/model/
@@ -125,7 +127,7 @@ services:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
     ports:
-      - "8080:80"
+      - "${PGADMIN_PORT:-5050}:80"
     depends_on:
       - postgres
     networks:

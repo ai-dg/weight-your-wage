@@ -11,7 +11,7 @@ DATA_DIRS = srcs/data/postgres srcs/data/postgres_mlflow srcs/data/minio srcs/da
 .PHONY: build up down downv logs stop start clean fclean dirs fix-perms
 
 
-build: dirs fix-perms
+build: dirs
 	if [ "$(NODE_ENV)" = "PROD" ]; then \
 		$(MAKE) dependencies-py; \
 		$(COMPOSE) build; \
@@ -24,8 +24,8 @@ build: dirs fix-perms
 		$(MAKE) logs-finder; \
 	fi
 
-fix-perms:
-	@sudo chown -R $$(id -u):$$(id -g) .venv srcs/data srcs/model srcs/logs 2>/dev/null || true
+# fix-perms:
+# 	@sudo chown -R $$(id -u):$$(id -g) .venv srcs/data srcs/model srcs/logs 2>/dev/null || true
 
 
 re: clean build

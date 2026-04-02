@@ -4,7 +4,7 @@ RUN apt-get update && apt-get upgrade -y
 RUN apt-get install -y python3
 RUN apt-get install -y python3-pip
 RUN apt-get install -y python3-venv
-RUN apt-get install -y curl procps
+RUN apt-get install -y curl procps util-linux
 
 # RUN pip install uv
 
@@ -18,11 +18,11 @@ COPY pyproject.toml /app/
 
 WORKDIR /app/
 
-# Permet à l'utilisateur non-root (voir docker-compose user: UID:GID) d'écrire .venv dans /app
+# chown /app pour l'utilisateur applicatif ; l'entrypoint (root) chown aussi /app/model (bind mount)
 ARG UID=1000
 ARG GID=1000
 RUN chown -R "${UID}:${GID}" /app
-USER ${UID}:${GID}
+ENV APP_UID=${UID} APP_GID=${GID}
 ENV HOME=/app
 ENV UV_CACHE_DIR=/app/.cache/uv
 
