@@ -6,25 +6,27 @@ RUN apt-get install -y python3-pip
 RUN apt-get install -y python3-venv
 RUN apt-get install -y curl procps util-linux
 
-# RUN pip install uv
-
-# RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-
-
 # ENV PATH=$PATH:/root/.local/bin
 # ENV PYTHONUNBUFFERED=1
 
-COPY pyproject.toml /app/
+COPY pyproject.toml uv.lock /app/
 
 WORKDIR /app/
 
-# chown /app pour l'utilisateur applicatif ; l'entrypoint (root) chown aussi /app/model (bind mount)
+# Compte système aligné sur UID/GID (sinon getpass.getpwuid → KeyError avec PyTorch / torch.compile)
 ARG UID=1000
 ARG GID=1000
+RUN groupadd --gid "${GID}" appuser \
+	&& useradd --uid "${UID}" --gid appuser --home-dir /app --no-create-home --shell /bin/sh appuser
 RUN chown -R "${UID}:${GID}" /app
 ENV APP_UID=${UID} APP_GID=${GID}
 ENV HOME=/app
+ENV USER=appuser
+ENV LOGNAME=appuser
 ENV UV_CACHE_DIR=/app/.cache/uv
+# .venv est souvent un bind mount : éviter les symlinks invalides hors conteneur
+ENV UV_LINK_MODE=copy
+ENV PYTHONPATH=/app/srcs
 
 # RUN uv python install 3.12 \
 # 	&& mkdir -p /opt \
@@ -35,4 +37,4 @@ ENV UV_CACHE_DIR=/app/.cache/uv
 
 # RUN chmod +x /app/api/entrypoint.sh
 
-ENTRYPOINT ["/bin/sh", "/app/api/entrypoint.sh"]
+ENTRYPOINT ["/bin/sh", "/app/srcs/api/entrypoint.sh"]

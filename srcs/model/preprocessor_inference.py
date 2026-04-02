@@ -11,6 +11,7 @@ import joblib
 import lightning as L
 from torch import tensor, float32
 from model.preprocessor_base import BasePreprocessor
+from model.paths import datasets_file
 
 
 class InferencePreprocessor(BasePreprocessor):
@@ -79,7 +80,7 @@ class InferencePreprocessor(BasePreprocessor):
 
 	
 def main():
-	datapreprocess = InferencePreprocessor("./model/datasets/inference.csv")
+	datapreprocess = InferencePreprocessor(datasets_file("inference.csv"))
 	datapreprocess.df.to_csv("Temp.csv")
 
 if __name__ == "__main__":

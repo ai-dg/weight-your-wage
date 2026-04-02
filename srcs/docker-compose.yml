@@ -56,7 +56,7 @@ services:
     container_name: cadvisor
     image: gcr.io/cadvisor/cadvisor:latest
     ports:
-      - "8080:8080"
+      - "${CADVISOR_PORT:-9080}:8080"
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
@@ -166,20 +166,25 @@ services:
       - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - APP_UID=${UID:-1000}
+      - APP_GID=${GID:-1000}
+      - USER=appuser
+      - LOGNAME=appuser
+    # GPU : Docker exige NVIDIA Container Toolkit sur l’hôte, sinon erreur
+    # « could not select device driver nvidia ». Activer avec USE_GPU=1 make …
+    # (fichier srcs/docker-compose.gpu.yml).
     expose:
       - 4243
     ports:
       - "0.0.0.0:4243:4243"
-    environment:
-      APP_UID: ${UID:-1000}
-      APP_GID: ${GID:-1000}
     volumes:
-      # - source_python:/app/.venv
-      # - ${PWD}/.venv:/app/.venv
-      - model:/app/model/
-      - api:/app/api/
+      - model:/app/srcs/model/
+      - api:/app/srcs/api/
+      # Même dossier : srcs/.venv (hôte) = /app/.uv-tool (conteneur) — uv + dépendances projet
+      - source_python:/app/.uv-tool
     networks:
       - model_network
+
 
   # ── Gateway ────────────────────────────────────────────────────────────────
   nginx:
@@ -220,19 +225,14 @@ services:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
     ports:
-<<<<<<< HEAD
       - "${PGADMIN_PORT:-5050}:80"
-=======
-      - "8070:80"
     volumes:
       - pgadmin_data:/var/lib/pgadmin
->>>>>>> origin/predict
     depends_on:
       - postgres
     networks:
       - postgres_network
 
-<<<<<<< HEAD
   # ── Frontend ───────────────────────────────────────────────────────────────
   streamlite:
     container_name: streamlite
@@ -268,8 +268,6 @@ services:
     networks:
       - model_network
 
-=======
->>>>>>> origin/predict
 volumes:
   postgres_data:
   pgadmin_data:
@@ -291,7 +289,7 @@ volumes:
     driver_opts:
       type: none
       o: bind
-      device: ${PWD}/.venv
+      device: ${PWD}/srcs/.venv
   frontend_node_modules:
 
   prometheus_data:

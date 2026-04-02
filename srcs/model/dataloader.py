@@ -8,10 +8,12 @@ from category_encoders import TargetEncoder
 import sys
 from pathlib import Path
 
+from model.paths import datasets_file
+
 try:
 	from model.features_answer import get_features, get_features_answers
 except ModuleNotFoundError:
-	# Permet l'execution directe du script: python/uv run ./model/dataloader.py
+	# Permet l'execution directe du script: python/uv run ./srcs/model/dataloader.py
 	srcs_root = Path(__file__).resolve().parent.parent
 	if str(srcs_root) not in sys.path:
 		sys.path.insert(0, str(srcs_root))
@@ -287,8 +289,8 @@ class DataLoaderClass(L.LightningDataModule):
 
 		self.X_test = X_test
 		self.y_test = y_test.to_frame()
-		X_test.to_csv("./model/datasets/X_test.csv")
-		y_test.to_csv("./model/datasets/y_test.csv")
+		X_test.to_csv(datasets_file("X_test.csv"))
+		y_test.to_csv(datasets_file("y_test.csv"))
 
 		X_train, X_val, y_train, y_val = train_test_split(X_split, y_split, random_state=seed, test_size=ratio_val, shuffle=True)
 

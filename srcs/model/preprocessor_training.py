@@ -11,6 +11,7 @@ import joblib
 import lightning as L
 from torch import tensor, float32
 from model.preprocessor_base import BasePreprocessor
+from model.paths import datasets_file
 
 
 class TrainingPreprocessor(BasePreprocessor):
@@ -43,7 +44,7 @@ class TrainingPreprocessor(BasePreprocessor):
 		# Use float64 limit as a ceiling
 		FLOAT_MAX = np.finfo(np.float64).max
 
-		currency_table  = pd.read_csv("./model/datasets/currency_2025.csv")
+		currency_table  = pd.read_csv(datasets_file("currency_2025.csv"))
 
 		# Convert CompTotalEuro with its attached currency
 		series_rate = currency_table.set_index("currency")['Value']
@@ -62,7 +63,7 @@ class TrainingPreprocessor(BasePreprocessor):
 		mask = (self.df["CompTotalEuro"] >= Salary_min) & (self.df["CompTotalEuro"] <= Salary_max)
 		self.df = self.df[mask].copy()
 
-		self.df.to_csv("./model/datasets/result_clean.csv")
+		self.df.to_csv(datasets_file("result_clean.csv"))
 		
 		# Delete the features Currency and CompTotal
 		self.drop_features(["Currency", "CompTotal"])
@@ -196,8 +197,8 @@ class TrainingPreprocessor(BasePreprocessor):
 
 		self.X_test = X_test
 		self.y_test = y_test.to_frame()
-		X_test.to_csv("./model/datasets/X_test.csv")
-		y_test.to_csv("./model/datasets/y_test.csv")
+		X_test.to_csv(datasets_file("X_test.csv"))
+		y_test.to_csv(datasets_file("y_test.csv"))
 
 		X_train, X_val, y_train, y_val = train_test_split(X_split, y_split, random_state=seed, test_size=ratio_val, shuffle=True)
 
@@ -256,7 +257,7 @@ class TrainingPreprocessor(BasePreprocessor):
 
 
 def main():
-	datapreprocess = TrainingPreprocessor("./model/datasets/survey_results_public.csv")
+	datapreprocess = TrainingPreprocessor(datasets_file("survey_results_public.csv"))
 	datapreprocess.df.to_csv("Temp.csv")
 
 	# EDA = profile = ProfileReport(datapreprocess.df, title="Data (After Cleaning)")
