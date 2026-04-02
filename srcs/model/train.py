@@ -38,7 +38,7 @@ def GeneralTrainer():
 
 	# trainer = L.Trainer(max_epochs=10, logger=mlf_logger, accelerator="cpu", enable_progress_bar=False)
 	callbacks = [
-			EarlyStopping(monitor="val_r2", mode="max", patience=3, verbose=True),
+			EarlyStopping(monitor="val_loss", mode="min", patience=5, verbose=True),
 	]
 	trainer = L.Trainer(
 		max_epochs=100,
