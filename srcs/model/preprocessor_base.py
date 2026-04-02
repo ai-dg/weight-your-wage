@@ -5,8 +5,7 @@ import lightning as L
 from ydata_profiling import ProfileReport
 from sklearn.preprocessing import MultiLabelBinarizer, OrdinalEncoder, OneHotEncoder, StandardScaler, scale
 from category_encoders import TargetEncoder
-from features_answer import get_features, get_features_answers
-# from model.features_answer import get_features, get_features_answers
+from srcs.model.features_answer import get_features, get_features_answers
 from sklearn.model_selection import train_test_split 
 import joblib
 import lightning as L
@@ -83,7 +82,6 @@ class BasePreprocessor(L.LightningDataModule, ABC):
 	######################################################################
 	##### 						UTILS								 #####
 	######################################################################
-	@staticmethod
 	def erase_str(value :str):
 		return value[:3]
 
@@ -133,6 +131,10 @@ class BasePreprocessor(L.LightningDataModule, ABC):
 	def normalize_by_standard(self):
 		pass
 	
+	@abstractmethod
+	def load_data_to_torch(self):
+		pass
+
 	def __str__(self):
 		resume = f"{self.df}"
 		columns = f"{self.df.columns}"

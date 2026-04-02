@@ -5,117 +5,37 @@ import lightning as L
 from ydata_profiling import ProfileReport
 from sklearn.preprocessing import MultiLabelBinarizer, OrdinalEncoder, OneHotEncoder, StandardScaler, scale
 from category_encoders import TargetEncoder
-import sys
-from pathlib import Path
-
-from model.paths import datasets_file
-
-try:
-	from model.features_answer import get_features, get_features_answers
-except ModuleNotFoundError:
-	# Permet l'execution directe du script: python/uv run ./srcs/model/dataloader.py
-	srcs_root = Path(__file__).resolve().parent.parent
-	if str(srcs_root) not in sys.path:
-		sys.path.insert(0, str(srcs_root))
-	from model.features_answer import get_features, get_features_answers
+from model.features_answer import get_features, get_features_answers
 from sklearn.model_selection import train_test_split 
 import joblib
 import lightning as L
 from torch import tensor, float32
+from model.preprocessor_base import BasePreprocessor
+from model.paths import datasets_file
 
-MODEL_DIR = Path(__file__).resolve().parent
-DATASETS_DIR = MODEL_DIR / "datasets"
 
-
-def erase_str(value :str):
-	return value[:3]
-
-class DataLoaderClass(L.LightningDataModule):
-
+class TrainingPreprocessor(BasePreprocessor):
 	def __init__(self, path):
-		super().__init__()
-		try :
-			self.df = pd.read_csv(path)
-			self.features = get_features()
-		except Exception as e :
-			print(f"Error : {e}")
-			raise RuntimeError(f"Error : {e}")
-		# print(np.sort(self.df["LanguageHaveWorkedWith"].dropna().unique()))		
-		self.clean_data()
-		self.clean_validation_data() #Need create another function for validation data
-		self.save_data()
-		self.normalize_by_standard()
-		# self.
-
-	######################################################################
-	##### 						CLEAN DATA							 #####
-	######################################################################
-	
-
-	def clean_data(self):
-		self.df = self.df[self.features].copy()
-
+		super().__init__(path)
 		#Clean Currency
 		self.df = self.df.dropna(subset="CompTotal")
-		self.df.loc[:, "Currency"] = self.df["Currency"].apply(erase_str)
+		# /!\ handle when df is empty
+
+		self.df.loc[:, "Currency"] = self.df["Currency"].apply(self.erase_str)
 		self.update_currency()
 
-		need_numerical_encoding = ["WorkExp", "YearsCode"]
 
-		need_binary_encoding = [
-								"LanguageChoice",
-								"DatabaseChoice",
-								"PlatformChoice",
-								"WebframeChoice",
-								"DevEnvsChoice",
-								"AIModelsChoice"
-								]
-
-		#Ordinal Encode every Nominal Features by order of importance
-		need_ordinal_encoding = ["EdLevel", "AISelect"]
-
-		#One hot encode every Nominal Features with no order importance
-		need_hot_encoding = [
-							"MainBranch",
-							"Age",
-							"Employment",
-							"DevType",
-							"OrgSize",
-							"ICorPM",
-							"RemoteWork",
-							"Industry",
-							"AIAgents",
-							"LearnCodeAI"
-							]
-
-		need_multi_label_encoding = [
-									"LearnCode",
-									"LanguageHaveWorkedWith",
-									"DatabaseHaveWorkedWith",
-									"PlatformHaveWorkedWith",
-									"WebframeHaveWorkedWith",
-									"DevEnvsHaveWorkedWith"
-									]
-		
-		need_target_encoding = ["Country"]
-
-		self.numerical_encoding(need_numerical_encoding) #Need median of each features
-		self.binary_encoding(need_binary_encoding) #Replace Nan by false (doesnt need to change anything for test)
-		self.ordinal_encoding(need_ordinal_encoding) #Check for percent of Nan	#Replace by Nan category	#Replace by most frequent
-		self.one_hot_encoding(need_hot_encoding) #Check percent of Nan #Replace Nan by zero #else Nan category 
-		self.multi_label_encoding(need_multi_label_encoding) #Check percent NaN #create Nan category #Put zero instead
-		self.target_encoding(need_target_encoding) #Save encoder
-
+	def run_pipeline(self):
+		self.clean_data()
+		self.split_data()
+		self.normalize_by_standard()
+		# self.
+	
 	def update_currency(self):
 		"""
 			Convert CompTotal to Euro, then drop CompTotal and Currency features.
 
 			Outliers are filtered out.
-			
-			Args:
-				None
-			Returns:
-				None
 		"""
 
 		Salary_min = 1000
@@ -124,11 +44,7 @@ class DataLoaderClass(L.LightningDataModule):
 		# Use float64 limit as a ceiling
 		FLOAT_MAX = np.finfo(np.float64).max
 
-		currency_path = DATASETS_DIR / "currency_2025.csv"
-		if not currency_path.exists():
-			# Backward compatibility: historical typo in filename.
-			currency_path = DATASETS_DIR / "currecy_2025.csv"
-		currency_table  = pd.read_csv(currency_path)
+		currency_table  = pd.read_csv(datasets_file("currency_2025.csv"))
 
 		# Convert CompTotalEuro with its attached currency
 		series_rate = currency_table.set_index("currency")['Value']
@@ -147,76 +63,70 @@ class DataLoaderClass(L.LightningDataModule):
 		mask = (self.df["CompTotalEuro"] >= Salary_min) & (self.df["CompTotalEuro"] <= Salary_max)
 		self.df = self.df[mask].copy()
 
-		self.df.to_csv(DATASETS_DIR / "result_clean.csv")
+		self.df.to_csv(datasets_file("result_clean.csv"))
 		
 		# Delete the features Currency and CompTotal
 		self.drop_features(["Currency", "CompTotal"])
+		
 
 
 	######################################################################
 	##### 						UTILS								 #####
 	######################################################################
-	def drop_features(self, features:list[str]):
-		self.df.drop(columns=features, inplace=True)
 
-	#Can remove this function
-	def replace_nan_median(self, feature: str | list[str], median): 
+	def replace_nan_median(self, feature: str):
 		median = self.df[feature].median()
 		self.df[feature] = self.df[feature].fillna(median)
+		return median
 
 	def replace_nan_frequent(self, feature: str):
 		most_frequent = self.df[feature].mode()[0]
 		self.df[feature] = self.df[feature].fillna(most_frequent)
+		return most_frequent
 
 	######################################################################
 	##### 						ENCODING							 #####
 	######################################################################
+	
 
 	def numerical_encoding(self, features: list[str]):
-		#For Numerical Encoding replace NaN with most median value
-		self.numerical_encoding_median = self.df[features].median()
-		self.df[features] = self.df[features].fillna(self.numerical_encoding_median)
-
-	def binary_encoding(self, features: list[str]):
 		for feature in features:
-			#Replace NaN Value by False
-			self.df[feature] = self.df[feature].fillna(0)
 
-			self.df[feature] = self.df[feature].replace("Yes", 1)
-			self.df[feature] = self.df[feature].replace("No", 0)
+			#For Numerical Encoding replace NaN with most median value
+			self.preprocess_state[feature]['median'] = self.replace_nan_median(feature)
 
 	def ordinal_encoding(self, initial_features: list[str]):
-		self.ordinal_encoding_nan_percent = []
-		self.ordinal_encoding_frequent = []
 		for feature in initial_features:
 
 			percentage_nan = self.df[feature].isna().sum() / len(self.df[feature])
-			self.ordinal_encoding_nan_percent.append(percentage_nan)
 			valid_answers = get_features_answers(feature)
 
 			#If Nan > 20% set NaN value to -1 else replace them with the most frequent value
 			if (percentage_nan > 0.2):
-				self.ordinal_encoding_frequent.append(np.nan)
 				placeholder = feature + "_NaN"
 				self.df[feature] = self.df[feature].fillna(placeholder)
+
 				if placeholder not in valid_answers:
 					valid_answers = [placeholder] + valid_answers
-			else:
-				most_frequent = self.df[feature].mode()[0]
-				self.ordinal_encoding_frequent.append(most_frequent)
-				self.df[feature] = self.df[feature].fillna(most_frequent)
+				self.preprocess_state[feature]['nan_strategy'] = "placeholder"
+				self.preprocess_state[feature]['placeholder'] = placeholder
+			else:	
+				self.preprocess_state[feature]['nan_strategy'] = "most_frequent"
+				self.preprocess_state[feature]['most_frequent'] = self.replace_nan_frequent(feature)
 
 			encoder = OrdinalEncoder(categories=[valid_answers],
 							handle_unknown='use_encoded_value',
 							unknown_value=-1)
-
 			self.df[feature] = encoder.fit_transform(self.df[[feature]])
+
+			self.preprocess_state[feature]['encoder'] = encoder
 
 	def one_hot_encoding(self, initial_features: list[str]):
 		for feature in initial_features:
 
 			percentage_nan = self.df[feature].isna().mean()
-			use_na = percentage_nan > 0.2
+			
+			use_na = True if percentage_nan > 0.2 else False
 
 			df_encoded = pd.get_dummies(
 				self.df[feature],
@@ -230,6 +140,7 @@ class DataLoaderClass(L.LightningDataModule):
 			self.df = pd.concat([self.df, df_encoded], axis=1)
 		
 		self.df.drop(columns=initial_features, inplace=True)
+
 
 	def multi_label_encoding(self, initial_features: list[str]):
 		for i, feature in enumerate(initial_features):
@@ -270,47 +181,31 @@ class DataLoaderClass(L.LightningDataModule):
 
 		#Drop Initial Features
 		self.df.drop(columns=initial_features, inplace=True)
-	
-	#TargetEncoder 
+
 	def target_encoding(self, features: list[str]):
 		for feature in features:
 			encoder = TargetEncoder(cols=[feature], smoothing=10.0)
 			result = encoder.fit_transform(self.df[[feature]], self.df["CompTotalEuro"])
-			self.df[feature] = result[feature]
+			self.df[feature] = result[feature]	
+
 
 	def split_data(self, ratio_test : float = 0.1, ratio_val : float = 0.20, seed : int = 42):
-		dataset = self.df
+		y = self.df.loc[:,"CompTotalEuro"]
+		X = self.df.drop("CompTotalEuro", axis=1)
 
-		dataset_split, dataset_test = train_test_split(dataset, random_state=seed, test_size=ratio_test, shuffle=True)
-		self.dataset_test = dataset_test
-
-		dataset_train, dataset_val = train_test_split(dataset_split, random_state=seed, test_size=ratio_val, shuffle=True)
-		self.dataset_train = dataset_train
-		self.dataset_val = dataset_val
-
-	def save_data(self):
-		self.X_train = self.dataset_train.loc[:,"CompTotalEuro"]
-		self.X_val = self.dataset_val.loc[:,"CompTotalEuro"]
-		self.y_train = self.dataset_train.drop("CompTotalEuro", axis=1)
-		self.y_val = self.dataset_train.drop("CompTotalEuro", axis=1)
-
-	# def split_data(self, ratio_test : float = 0.1, ratio_val : float = 0.20, seed : int = 42):
-	# 	y = self.df.loc[:,"CompTotalEuro"]
-	# 	X = self.df.drop("CompTotalEuro", axis=1)
-
-	# 	X_split, X_test, y_split, y_test = train_test_split(X, y, random_state=seed, test_size=ratio_test, shuffle=True)
+		X_split, X_test, y_split, y_test = train_test_split(X, y, random_state=seed, test_size=ratio_test, shuffle=True)
 
 		self.X_test = X_test
 		self.y_test = y_test.to_frame()
 		X_test.to_csv(datasets_file("X_test.csv"))
 		y_test.to_csv(datasets_file("y_test.csv"))
 
-	# 	X_train, X_val, y_train, y_val = train_test_split(X_split, y_split, random_state=seed, test_size=ratio_val, shuffle=True)
+		X_train, X_val, y_train, y_val = train_test_split(X_split, y_split, random_state=seed, test_size=ratio_val, shuffle=True)
 
-	# 	self.X_train = X_train
-	# 	self.X_val = X_val
-	# 	self.y_train = y_train.to_frame()
-	# 	self.y_val = y_val.to_frame()
+		self.X_train = X_train
+		self.X_val = X_val
+		self.y_train = y_train.to_frame()
+		self.y_val = y_val.to_frame()
 
 
 	
@@ -360,19 +255,10 @@ class DataLoaderClass(L.LightningDataModule):
 
 		return Train_loader, Val_loader, Test_loader			
 
-	def __str__(self):
-		resume = f"{self.df}"
-		columns = f"{self.df.columns}"
-
-		return resume + "\n" + columns
-	
-	
 
 def main():
-	datapath = DATASETS_DIR / "survey_results_public.csv"
-	datapreprocess = DataLoaderClass(datapath)
-	datapreprocess.df.to_csv(MODEL_DIR / "Temp.csv")
-
+	datapreprocess = TrainingPreprocessor(datasets_file("survey_results_public.csv"))
+	datapreprocess.df.to_csv("Temp.csv")
 
 	# EDA = profile = ProfileReport(datapreprocess.df, title="Data (After Cleaning)")
 	# profile.to_file("reports/data_analysis.html")

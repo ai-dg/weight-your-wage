@@ -56,7 +56,7 @@ services:
     container_name: cadvisor
     image: gcr.io/cadvisor/cadvisor:latest
     ports:
-      - "8080:8080"
+      - "${CADVISOR_PORT:-9080}:8080"
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
@@ -158,22 +158,33 @@ services:
     build:
       context: ..
       dockerfile: srcs/api/Dockerfile
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
       network: host
     environment:
       - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - APP_UID=${UID:-1000}
+      - APP_GID=${GID:-1000}
+      - USER=appuser
+      - LOGNAME=appuser
+    # GPU : Docker exige NVIDIA Container Toolkit sur l’hôte, sinon erreur
+    # « could not select device driver nvidia ». Activer avec USE_GPU=1 make …
+    # (fichier srcs/docker-compose.gpu.yml).
     expose:
       - 4243
     ports:
       - "0.0.0.0:4243:4243"
-    #user: "${UID}:${GID}"
     volumes:
-      - ${PWD}/.venv:/app/.venv
       - model:/app/srcs/model/
-
+      - api:/app/srcs/api/
+      # Même dossier : srcs/.venv (hôte) = /app/.uv-tool (conteneur) — uv + dépendances projet
+      - source_python:/app/.uv-tool
     networks:
       - model_network
+
 
   # ── Gateway ────────────────────────────────────────────────────────────────
   nginx:
@@ -214,13 +225,48 @@ services:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
     ports:
-      - "8070:80"
+      - "${PGADMIN_PORT:-5050}:80"
     volumes:
       - pgadmin_data:/var/lib/pgadmin
     depends_on:
       - postgres
     networks:
       - postgres_network
+
+  # ── Frontend ───────────────────────────────────────────────────────────────
+  streamlite:
+    container_name: streamlite
+    build:
+      context: ./services/streamlite
+      dockerfile: Dockerfile
+
+  frontend:
+    profiles: ["dev"]
+    container_name: frontend
+    build:
+      context: ./services/frontend
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    command: sh -c "npm install && npm run dev:docker"
+    environment:
+      FASTAPI_INTERNAL_URL: http://fastapi:4243
+      PREDICT_PATH: /predict
+      NEXT_PUBLIC_PREDICT_URL: /api/predict
+      NEXT_PUBLIC_WRANGLER_PORT: ${WRANGLER_PORT:-8788}
+      PORT: ${FRONTEND_INTERNAL_PORT:-3001}
+      WRANGLER_INTERNAL_PORT: ${WRANGLER_INTERNAL_PORT:-8788}
+    volumes:
+      - ./services/frontend:/app
+      - frontend_node_modules:/app/node_modules
+      - ./services/frontend/cf-dev-vars.docker:/app/.dev.vars:ro
+    ports:
+      - "${FRONTEND_PORT:-3001}:${FRONTEND_INTERNAL_PORT:-3001}"
+      - "${WRANGLER_PORT:-8788}:${WRANGLER_INTERNAL_PORT:-8788}"
+    depends_on:
+      - fastapi
+    networks:
+      - model_network
 
 volumes:
   postgres_data:
@@ -232,12 +278,19 @@ volumes:
       type: none
       o: bind
       device: ${PWD}/srcs/model
+  api:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/srcs/api
   source_python:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: ${PWD}/.venv
+      device: ${PWD}/srcs/.venv
+  frontend_node_modules:
 
   prometheus_data:
     driver: local

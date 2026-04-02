@@ -1,4 +1,4 @@
-from gc import callbacks
+import torch
 
 from srcs.model.salary_model import SalaryModel
 # from dataloader import DataLoaderClass
@@ -119,3 +119,4 @@ def GeneralTrainer():
 
 if __name__ == "__main__" :
 	GeneralTrainer()
+

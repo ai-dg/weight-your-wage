@@ -1,5 +1,8 @@
 import fastapi
 from fastapi import FastAPI, BackgroundTasks
+from fastapi import Request
+import pandas as pd
+from model.paths import datasets_file, model_file
 from fastapi.responses import JSONResponse
 import uuid
 import datetime
@@ -47,7 +50,7 @@ def main():
 		sys.stderr.reconfigure(line_buffering=True) if hasattr(sys.stderr, "reconfigure") else None
 		try:
 			from srcs.model.predict import GeneralInferencer
-			salary = GeneralInferencer("./srcs/model/datasets/inference.csv")
+			salary = GeneralInferencer(datasets_file("inference.csv"))
 			jobs[job_id]["status"] = "done"
 			jobs[job_id]["salary"] = salary
 			print("[predict] Inference completed.", flush=True)
@@ -119,6 +122,27 @@ def main():
 			)
 		return jobs[job_id]
 	
+
+	@app.post("/predict")
+	async def predict(request: Request):
+		"""POST JSON aligné sur le formulaire / modèle. Ne renvoie pas l’objet Request (non JSON-serializable)."""
+		body = None
+		try:
+			body = await request.json()
+		except Exception as exc:
+			print(f"[predict] corps JSON invalide ou vide: {exc}", flush=True)
+		else:
+			if isinstance(body, dict):
+				print(f"[predict] reçu {len(body)} champs: {list(body.keys())}", flush=True)
+			else:
+				print(f"[predict] reçu type={type(body).__name__}", flush=True)
+		df = pd.DataFrame([body])
+		df.to_csv(model_file("inference.csv"))
+		return {
+			"message": "prediction started",
+			"received": body,
+		}
+
 
 	return app
 

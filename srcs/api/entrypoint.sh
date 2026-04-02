@@ -1,24 +1,42 @@
 #!/bin/sh
 set -e
-uv python install 3.12 2>/dev/null || true
 
-# Host-mounted uv venv often points to /home/<user>/.local/share/uv/python.
-# Mirror that path to the container uv install so /app/.venv/bin/python works.
-if [ -d /root/.local/share/uv/python ]; then
-	mkdir -p /home/steven/.local/share/uv
-	ln -sfn /root/.local/share/uv/python /home/steven/.local/share/uv/python
+APP_UID="${APP_UID:-1000}"
+APP_GID="${APP_GID:-1000}"
+
+# Bind mount model/ peut être root:root sur l'hôte : correction une fois au démarrage, puis exécution non-root.
+if [ "$(id -u)" = 0 ]; then
+	mkdir -p /app/srcs/model/datasets
+	chown -R "${APP_UID}:${APP_GID}" /app/srcs/model
+	# CSV/cache écrits par pandas : droits lecture/écriture sur tout le volume model (bind mount hôte)
+	chmod -R u+rwX /app/srcs/model 2>/dev/null || true
+	chown -R "${APP_UID}:${APP_GID}" /app/.uv-tool 2>/dev/null || true
+	# --clear-groups évite --init-groups (qui exige une entrée /etc/passwd pour l’UID).
+	exec setpriv --reuid="${APP_UID}" --regid="${APP_GID}" --clear-groups -- /bin/sh /app/srcs/api/entrypoint.sh
 fi
 
-if [ -x /app/.venv/bin/python ]; then
-	echo "Starting uvicorn with mounted venv /app/.venv/bin/python" 1>&2
-	exec /app/.venv/bin/python -m uvicorn api.app:app --host 0.0.0.0 --port 4243
-fi
+# getpass.getuser() (PyTorch inductor) sans entrée passwd : forcer le nom logique
+export USER="${USER:-appuser}"
+export LOGNAME="${LOGNAME:-appuser}"
+export PYTHONPATH="/app/srcs${PYTHONPATH:+:$PYTHONPATH}"
+# srcs/.venv (hôte) monté ici : un seul venv pour uv + uv sync
+export UV_PROJECT_ENVIRONMENT=/app/.uv-tool
 
-CONTAINER_PYTHON=/root/.local/share/uv/python/cpython-3.12-linux-x86_64-gnu/bin/python3
-[ -x "$CONTAINER_PYTHON" ] || CONTAINER_PYTHON=$(find /root/.local/share/uv/python -path '*/bin/python3' 2>/dev/null | head -1)
-if [ -n "$CONTAINER_PYTHON" ]; then
-	echo "Starting uvicorn with $CONTAINER_PYTHON" 1>&2
-	exec "$CONTAINER_PYTHON" -m uvicorn api.app:app --host 0.0.0.0 --port 4243
+cd /app
+UV_ENV=/app/.uv-tool
+# Montage srcs/.venv : peut être vide, ou cassé (pyvenv.cfg sans bin/python)
+if [ ! -x "$UV_ENV/bin/python" ] && [ ! -x "$UV_ENV/bin/python3" ]; then
+	# venv absent ou incomplet (ex. pyvenv.cfg sans binaires)
+	rm -rf "${UV_ENV:?}"/* 2>/dev/null || true
+	python3 -m venv "$UV_ENV"
 fi
-echo "Fallback: uv run uvicorn" 1>&2
+if [ -e "$UV_ENV/bin/python" ] && [ ! -e "$UV_ENV/bin/python3" ]; then
+	ln -sf python "$UV_ENV/bin/python3"
+fi
+"$UV_ENV/bin/python" -m pip install --no-cache-dir --upgrade pip
+"$UV_ENV/bin/python" -m pip install --no-cache-dir uv
+export PATH="$UV_ENV/bin:$PATH"
+
+uv python install 3.12
+uv sync
 exec uv run uvicorn api.app:app --host 0.0.0.0 --port 4243
