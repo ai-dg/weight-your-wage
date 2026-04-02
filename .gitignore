@@ -36,3 +36,5 @@ srcs/services/frontend/npm-debug.log*
 srcs/services/frontend/yarn-debug.log*
 srcs/services/frontend/yarn-error.log*
 srcs/services/frontend/pnpm-debug.log*
+mlruns
+notes.txt

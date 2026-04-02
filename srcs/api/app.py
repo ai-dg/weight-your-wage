@@ -2,6 +2,12 @@ import fastapi
 from fastapi import FastAPI, BackgroundTasks
 from fastapi import Request
 import pandas as pd
+from fastapi.responses import JSONResponse
+import uuid
+import datetime
+
+
+jobs = {}
 
 
 def main():
@@ -9,7 +15,10 @@ def main():
 	app.include_router(fastapi.APIRouter())
 	app.get("/")(lambda: {"message": "Hello World"})
 
-	def _run_training():
+	def _run_test(job_id: str):
+		pass
+
+	def _run_training(job_id: str):
 		import sys
 		import logging
 		sys.stdout.reconfigure(line_buffering=True) if hasattr(sys.stdout, "reconfigure") else None
@@ -19,23 +28,99 @@ def main():
 			logging.getLogger(name).setLevel(logging.INFO)
 			for h in logging.getLogger(name).handlers:
 				h.setStream(sys.stdout)
-		print("[train] Démarrage de l'entraînement...", flush=True)
+		print("[train] Starting training...", flush=True)
 		try:
 			from model.train import GeneralTrainer
 			GeneralTrainer()
-			print("[train] Entraînement terminé.", flush=True)
+			jobs[job_id]["status"] = "done"
+			print("[train] Training completed.", flush=True)
 		except Exception as e:
-			print(f"[train] Erreur: {e}", flush=True)
+			jobs[job_id]["status"] = "failed"
+			print(f"[train] Error: {e}", flush=True)
 			import traceback
 			traceback.print_exc()
 		finally:
 			sys.stdout.flush()
 			sys.stderr.flush()
 
-	@app.post("/train")
+	def _run_inference(job_id: str):
+		import sys
+		sys.stdout.reconfigure(line_buffering=True) if hasattr(sys.stdout, "reconfigure") else None
+		sys.stderr.reconfigure(line_buffering=True) if hasattr(sys.stderr, "reconfigure") else None
+		try:
+			from model.predict import GeneralInferencer
+			salary = GeneralInferencer("./model/datasets/inference.csv")
+			jobs[job_id]["status"] = "done"
+			jobs[job_id]["salary"] = salary
+			print("[predict] Inference completed.", flush=True)
+		except Exception as e:
+			jobs[job_id]["status"] = "failed"
+			print(f"[predict] Error: {e}", flush=True)
+			import traceback
+			traceback.print_exc()
+		finally:
+			sys.stdout.flush()
+			sys.stderr.flush()
+		
+
+	@app.post("/jobs/train")
 	def train(background_tasks: BackgroundTasks):
-		background_tasks.add_task(_run_training)
-		return {"status": "training started", "message": "L'entraînement tourne en arrière-plan."}
+		job_id = str(uuid.uuid4())
+		jobs[job_id] = {
+			"task": "train",
+			"status": "pending",
+			"created_at": str(datetime.datetime.now())
+		}
+		background_tasks.add_task(_run_training, job_id=job_id)
+		return {
+			"status": "training started",
+			"job_id": job_id,
+			"message": "Training is running in the background."
+		}
+
+	@app.post("/jobs/test")
+	def test(background_tasks: BackgroundTasks):
+		job_id = str(uuid.uuid4())
+		jobs[job_id] = {
+			"task": "train",
+			"status": "pending",
+			"created_at": str(datetime.datetime.now())
+		}
+		background_tasks.add_task(_run_test, job_id=job_id)
+		return {
+			"status": "test started",
+			"job_id": job_id,
+			"message": "Test is running in the background."
+		}
+
+	@app.post("/jobs/predict")
+	def predict(background_tasks: BackgroundTasks):
+		job_id = str(uuid.uuid4())
+		jobs[job_id] = {
+			"task": "predict",
+			"status": "pending",
+			"created_at": str(datetime.datetime.now())
+		}
+		background_tasks.add_task(_run_inference, job_id=job_id)
+		return {
+			"status": "inference started",
+			"job_id": job_id,
+			"message": "Inference is running in the background."
+		}
+
+	@app.get("/jobs/{job_id}")
+	def get_job(job_id: str):
+		if not job_id in jobs:
+			return JSONResponse(
+				status_code=404,
+				content={
+					"error": "Job not found",
+					"job_id": job_id,
+					"status_code": 404
+				}
+			)
+		return jobs[job_id]
+	
 
 	@app.post("/predict")
 	async def predict(request: Request):

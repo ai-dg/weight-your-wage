@@ -1,4 +1,4 @@
-FROM debian:latest
+FROM debian:bookworm-slim
 
 RUN apt-get update && apt-get upgrade -y
 RUN apt-get install -y python3

@@ -6,7 +6,7 @@ include srcs/.env
 export
 endif
 
-DATA_DIRS = srcs/data/postgres srcs/data/postgres_mlflow srcs/data/minio srcs/data/artifacts srcs/logs
+DATA_DIRS = srcs/data/postgres srcs/data/postgres_mlflow srcs/data/minio srcs/data/artifacts srcs/data/grafana_data srcs/data/prometheus srcs/logs
 
 .PHONY: build up down downv logs stop start clean fclean dirs fix-perms
 
@@ -23,12 +23,6 @@ build: dirs
 		$(COMPOSE) --profile dev up -d --remove-orphans; \
 		$(MAKE) logs-finder; \
 	fi
-
-# fix-perms:
-# 	@sudo chown -R $$(id -u):$$(id -g) .venv srcs/data srcs/model srcs/logs 2>/dev/null || true
-
-
-re: clean build
 
 up: dirs
 	if [ "$(NODE_ENV)" = "PROD" ]; then \
@@ -65,10 +59,11 @@ logs:
 logs-svc:
 	$(COMPOSE) logs -f $(SVC)
 
-
 dirs:
 	@mkdir -p $(DATA_DIRS)
 
+clean:
+	@echo "Stopping services and removing containers..."
 
 clean: down
 	if [ "$(NODE_ENV)" = "PROD" ]; then \
@@ -87,10 +82,32 @@ logs-kill-finder:
 
 dependencies-py:
 	@bash srcs/scripts/dependencies/dependencies_py.sh
+	@bash srcs/scripts/logs/kill-finder.sh 2>/dev/null || true
 
+	$(COMPOSE) down --remove-orphans
 
+	@echo "clean: Containers, .venv, and data directories wiped."
+
+fclean:
+	@echo "Performing factory reset..."
 
 fclean: clean
 	$(MAKE) fix-perms
 	@rm -rf $(DATA_DIRS)
 	@echo "fclean: conteneurs, volumes et données supprimés."
+	@bash srcs/scripts/logs/kill-finder.sh 2>/dev/null || true
+
+	# Remove volumes and all images associated with this project
+	$(COMPOSE) down -v --rmi all --remove-orphans
+
+	# Remove physical data directories created by 'dirs'
+	sudo rm -rf $(DATA_DIRS)
+
+	# Remove the Python virtual environment and lock files
+	sudo rm -rf .venv
+
+	# Optional: Clean up dangling docker build cache
+	docker builder prune -f
+	@echo "fclean: Containers, volumes, images, .venv, and data directories wiped."
+
+re: fclean build
