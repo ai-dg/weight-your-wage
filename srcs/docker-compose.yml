@@ -170,7 +170,7 @@ services:
     #user: "${UID}:${GID}"
     volumes:
       - ${PWD}/.venv:/app/.venv
-      - model:/app/model/
+      - model:/app/srcs/model/
 
     networks:
       - model_network

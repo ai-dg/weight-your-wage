@@ -28,7 +28,7 @@ def main():
 				h.setStream(sys.stdout)
 		print("[train] Starting training...", flush=True)
 		try:
-			from model.train import GeneralTrainer
+			from srcs.model.train import GeneralTrainer
 			GeneralTrainer()
 			jobs[job_id]["status"] = "done"
 			print("[train] Training completed.", flush=True)

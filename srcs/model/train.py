@@ -1,8 +1,8 @@
 from gc import callbacks
 
-from model.salary_model import SalaryModel
+from srcs.model.salary_model import SalaryModel
 # from dataloader import DataLoaderClass
-from model.data_preprocessor import SalaryDataModule
+from srcs.model.data_preprocessor import SalaryDataModule
 import lightning as L
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping, LearningRateMonitor, ModelSummary, LearningRateFinder
 from lightning.pytorch.loggers import CSVLogger, MLFlowLogger
@@ -32,12 +32,17 @@ def GeneralTrainer():
 		experiment_name=EXPIREMENT_NAME
 	)
 
-	salary_data_module = SalaryDataModule("./model/datasets/survey_results_public.csv")
+	salary_data_module = SalaryDataModule("./srcs/model/datasets/survey_results_public.csv")
 	salary_data_module.setup(stage="fit")
 	salary_model = SalaryModel(nb_features=salary_data_module.nb_features)
 
 	# trainer = L.Trainer(max_epochs=10, logger=mlf_logger, accelerator="cpu", enable_progress_bar=False)
-	trainer = L.Trainer(max_epochs=1, logger=mlf_logger, accelerator="cpu", enable_progress_bar=False)
+	trainer = L.Trainer(
+		max_epochs=10,
+		logger=mlf_logger,
+		accelerator="cpu",
+		enable_progress_bar=False
+	)
 
 	trainer.fit(
 		model=salary_model,

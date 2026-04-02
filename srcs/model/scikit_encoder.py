@@ -2,8 +2,8 @@ import pandas as pd
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.preprocessing import MultiLabelBinarizer, OrdinalEncoder, OneHotEncoder 
-from features_answer import get_features, get_features_answers
-# from model.features_answer import get_features, get_features_answers
+# from features_answer import get_features, get_features_answers
+from srcs.model.features_answer import get_features, get_features_answers
 
 class SmartOrdinalEncoder(BaseEstimator, TransformerMixin):
     def __init__(self, threshold=0.2):
