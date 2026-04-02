@@ -40,8 +40,8 @@ def GeneralInferencer(path):
 		datamodule=salary_data_module
 	)
 
-    salary_array = salary_data_module.scaler_y.inverse_transform(
-            np.expm1(
+    salary_array = np.expm1(
+        salary_data_module.scaler_y.inverse_transform(
                 torch.cat(y_hat).numpy()
             )
         )
