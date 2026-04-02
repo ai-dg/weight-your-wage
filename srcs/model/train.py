@@ -2,7 +2,7 @@ from gc import callbacks
 
 from model.salary_model import SalaryModel
 # from dataloader import DataLoaderClass
-from model.preprocessor_training import TrainingPreprocessor
+from model.data_preprocessor import SalaryDataModule
 import lightning as L
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping, LearningRateMonitor, ModelSummary, LearningRateFinder
 from lightning.pytorch.loggers import CSVLogger, MLFlowLogger
@@ -26,30 +26,31 @@ def GeneralTrainer():
 	#Start clean
 	mlflow.end_run()
 
-	#Import Data turn it into tensors
-	# data = DataLoaderClass("./model/datasets/survey_results_public.csv")
-	data = TrainingPreprocessor("./model/datasets/survey_results_public.csv")
-	data.run_pipeline()
-	train_dataloader, val_dataloader, test_dataloader = data.load_data_to_torch()
-
 	#Setup Logger
 	mlf_logger = MLFlowLogger(
 		tracking_uri=MLFLOW_URI,
 		experiment_name=EXPIREMENT_NAME
 	)
 
-	salary_model = SalaryModel(nb_features=len(data.X_train.columns))
+	salary_data_module = SalaryDataModule("./model/datasets/survey_results_public.csv")
+	salary_data_module.setup(stage="fit")
+	salary_model = SalaryModel(nb_features=salary_data_module.nb_features)
 
 	# trainer = L.Trainer(max_epochs=10, logger=mlf_logger, accelerator="cpu", enable_progress_bar=False)
 	trainer = L.Trainer(max_epochs=1, logger=mlf_logger, accelerator="cpu", enable_progress_bar=False)
 
 	trainer.fit(
 		model=salary_model,
-		train_dataloaders=train_dataloader,
-		val_dataloaders=val_dataloader)
+		datamodule=salary_data_module
+	)
+
+	######################################################################
+	##### 							SAVE							 #####
+	######################################################################
+
 	val_metrics = trainer.validate(
 		model=salary_model,
-		dataloaders=val_dataloader,
+		datamodule=salary_data_module,
 		verbose=False
 	)
 	current_val_r2 = val_metrics[0]["val_r2"]
@@ -62,7 +63,11 @@ def GeneralTrainer():
 	run_id = mlf_logger.run_id
 	with mlflow.start_run(run_id=run_id):
 		mlflow.log_artifact(
-			local_path=data.preprocess_state['filename'],
+			local_path=salary_data_module.fit_encoder_filename,
+			artifact_path="preprocess"
+		)
+		mlflow.log_artifact(
+			local_path=salary_data_module.target_scaler_filename,
 			artifact_path="preprocess"
 		)
 
