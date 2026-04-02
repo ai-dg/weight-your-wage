@@ -40,13 +40,13 @@ def GeneralInferencer(path):
 		datamodule=salary_data_module
 	)
 
-    salary = np.expm1(
-            salary_data_module.scaler_y.inverse_transform(
-                y_hat.cpu().numpy()
+    salary_array = salary_data_module.scaler_y.inverse_transform(
+            np.expm1(
+                torch.cat(y_hat).numpy()
             )
         )
 
-    return salary
+    return float(salary_array[0][0])
     
 if __name__ == "__main__" :
     GeneralInferencer("./srcs/model/datasets/inference.csv")
