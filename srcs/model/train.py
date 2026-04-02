@@ -37,11 +37,15 @@ def GeneralTrainer():
 	salary_model = SalaryModel(nb_features=salary_data_module.nb_features)
 
 	# trainer = L.Trainer(max_epochs=10, logger=mlf_logger, accelerator="cpu", enable_progress_bar=False)
+	callbacks = [
+			EarlyStopping(monitor="val_r2", mode="max", patience=3, verbose=True),
+	]
 	trainer = L.Trainer(
-		max_epochs=10,
+		max_epochs=100,
 		logger=mlf_logger,
 		accelerator="cpu",
-		enable_progress_bar=False
+		enable_progress_bar=False,
+		callbacks=callbacks
 	)
 
 	trainer.fit(
