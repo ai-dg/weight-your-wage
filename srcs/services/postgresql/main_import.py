@@ -308,7 +308,8 @@ def run_minio_import_postgresql():
         )
     
     finally:
-        if 'conn' in locals(): conn.close()
+        if 'conn' in locals() and conn:
+            conn.close()
 
 if __name__ == "__main__":
     try:

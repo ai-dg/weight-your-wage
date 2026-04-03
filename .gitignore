@@ -9,6 +9,7 @@ __pycache__
 mlruns
 notes.txt
 .cursor
+.env
 
 # Modèle / MLflow / checkpoints (artefacts locaux)
 srcs/model/logs/
