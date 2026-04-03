@@ -34,14 +34,13 @@ def GeneralTrainer():
 
 	salary_data_module = SalaryDataModule("./srcs/model/datasets/survey_results_public.csv")
 	salary_data_module.setup(stage="fit")
-	salary_model = SalaryModel(nb_features=salary_data_module.nb_features)
+	salary_model = SalaryModel(nb_features=salary_data_module.nb_features, lr=1e-5)
 
 	callbacks = [
-			EarlyStopping(monitor="val_r2", mode="max", patience=10, verbose=True),
+			EarlyStopping(monitor="val_r2", mode="max", patience=5, verbose=True),
 	]
 	trainer = L.Trainer(
-		# max_epochs=100,
-		max_epochs=1,
+		max_epochs=100,
 		logger=mlf_logger,
 		accelerator="cpu",
 		enable_progress_bar=False,
