@@ -27,6 +27,7 @@ ENV UV_CACHE_DIR=/app/.cache/uv
 # .venv est souvent un bind mount : éviter les symlinks invalides hors conteneur
 ENV UV_LINK_MODE=copy
 ENV PYTHONPATH=/app/srcs
+ENV PYTHONUNBUFFERED=1
 
 # RUN uv python install 3.12 \
 # 	&& mkdir -p /opt \
