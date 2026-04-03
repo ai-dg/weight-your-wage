@@ -35,6 +35,7 @@ class SmartOrdinalEncoder(BaseEstimator, TransformerMixin):
             )
             encoder.fit([[v] for v in valid_answers])
             self.feature_metadata[feature]['encoder'] = encoder
+            self.feature_metadata[feature]['valid_answers'] = valid_answers
         return self
 
     def transform(self, X):
@@ -46,6 +47,10 @@ class SmartOrdinalEncoder(BaseEstimator, TransformerMixin):
             encoded_col = meta['encoder'].transform(col_data)
             all_encoded_results.append(encoded_col)
         return np.hstack(all_encoded_results)
+
+    def get_feature_names_out(self, input_features=None):
+        feature_name = input_features[0]
+        valid_answers = self.feature_metadata[get_features_answers]
 
 class SmartOneHotEncoder(BaseEstimator, TransformerMixin):
     def __init__(self, threshold=0.2):

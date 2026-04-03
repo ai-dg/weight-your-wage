@@ -39,7 +39,7 @@ def GeneralTrainer():
 	import sys
 	sys.stdout.reconfigure(line_buffering=True) if hasattr(sys.stdout, "reconfigure") else None
 	sys.stderr.reconfigure(line_buffering=True) if hasattr(sys.stderr, "reconfigure") else None
-	print(f"column names: {salary_data_module.column_names}", flush=True)
+	# print(f"column names: {salary_data_module.column_names}", flush=True)
 	sys.stdout.flush()
 
 	callbacks = [

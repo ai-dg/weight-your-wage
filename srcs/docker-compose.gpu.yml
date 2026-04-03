@@ -1,0 +1,14 @@
+# À fusionner seulement après installation du NVIDIA Container Toolkit sur l’hôte.
+# USE_GPU=1 make build   ou   docker compose -f srcs/docker-compose.yml -f srcs/docker-compose.gpu.yml up -d
+services:
+  fastapi:
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES:-all}
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

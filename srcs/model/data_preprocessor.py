@@ -23,6 +23,8 @@ from srcs.model.features_answer import get_features, get_features_answers
 
 # class TrainingPreprocessor(BasePreprocessor):
 
+# set_config(transform_output="pandas")
+
 class SalaryDataModule(L.LightningDataModule):
 
 	def __init__(self, path):
@@ -277,6 +279,9 @@ class SalaryDataModule(L.LightningDataModule):
 
 		#Transform + Scaling (on X and on y) (normalize)
 		self.X_train_scaled = self.ct.fit_transform(self.X_train, self.y_train)
+
+		# self.column_names = self.ct.get_feature_names_out()
+
 		self.X_val_scaled = self.ct.transform(self.X_val)
 
 		self.nb_features = self.X_train_scaled.shape[1]
