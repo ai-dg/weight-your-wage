@@ -93,8 +93,8 @@ services:
     container_name: minio
     image: minio/minio:latest
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     command: server /data --console-address ":9001"
     ports:
       - "9000:9000" #API
@@ -232,6 +232,30 @@ services:
       - postgres
     networks:
       - postgres_network
+
+  metabase:
+    image: metabase/metabase:latest
+    container_name: metabase
+    hostname: metabase
+    ports:
+      - "3001:3000"
+    environment:
+      - MB_DB_TYPE=postgres
+      - MB_DB_DBNAME=metabase_metadata
+      - MB_DB_PORT=${DB_PORT}
+      - MB_DB_USER=${DB_USER}
+      - MB_DB_PASS=${DB_PASSWORD}
+      - MB_DB_HOST=postgres
+      - MB_ADMIN_EMAIL=${METABASE_ADMIN_EMAIL}
+      - MB_ADMIN_PASSWORD=${METABASE_ADMIN_PASSWORD}
+      - MB_ADMIN_FIRST_NAME=${METABASE_ADMIN_FIRST_NAME}
+      - MB_ADMIN_LAST_NAME=${METABASE_ADMIN_LAST_NAME}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - postgres_network
+
 
   # ── Frontend ───────────────────────────────────────────────────────────────
   streamlite:
