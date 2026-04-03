@@ -130,6 +130,10 @@ class SalaryDataModule(L.LightningDataModule):
 		
 		need_target_encoding = ["Country"]
 
+		binary_pipeline = Pipeline([
+			('imputer', SimpleImputer(strategy='constant', fill_value='No')),
+			('encoder', OneHotEncoder(drop='first', sparse_output=False, handle_unknown='error', dtype=int))
+		])
 		num_pipeline = Pipeline([
 			('imputer', SimpleImputer(strategy='median')),
 			('scaler', StandardScaler())
@@ -142,12 +146,13 @@ class SalaryDataModule(L.LightningDataModule):
 
 		self.ct = ColumnTransformer(transformers=[
 			('numerical', num_pipeline, need_numerical_encoding),
-			('binary', OneHotEncoder(drop='first', handle_unknown='ignore', sparse_output=False, dtype=int), need_binary_encoding),
+			('binary', binary_pipeline, need_binary_encoding),
 			('ordinal', SmartOrdinalEncoder(), need_ordinal_encoding),
 			('one_hot', SmartOneHotEncoder(), need_hot_encoding),
 			('multi_label', SmartMultilabelEncoder(), need_multi_label_encoding),
 			('target', target_pipeline, need_target_encoding),
 		])
+
 	
 	def update_currency(self):
 		"""
@@ -277,6 +282,12 @@ class SalaryDataModule(L.LightningDataModule):
 
 		#Transform + Scaling (on X and on y) (normalize)
 		self.X_train_scaled = self.ct.fit_transform(self.X_train, self.y_train)
+
+		feature_names = self.ct.get_feature_names_out()
+		print(f"Input Features: {len(self.X_train.columns)}")
+		print(f"Output Features (after encoding): {len(feature_names)}")
+		print(f"All Output Features: {feature_names}")
+
 		self.X_val_scaled = self.ct.transform(self.X_val)
 
 		self.nb_features = self.X_train_scaled.shape[1]

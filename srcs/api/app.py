@@ -2,7 +2,6 @@ import fastapi
 from fastapi import FastAPI, BackgroundTasks
 from fastapi import Request
 import pandas as pd
-from model.paths import datasets_file, model_file
 from fastapi.responses import JSONResponse
 import uuid
 import datetime
@@ -50,7 +49,7 @@ def main():
 		sys.stderr.reconfigure(line_buffering=True) if hasattr(sys.stderr, "reconfigure") else None
 		try:
 			from srcs.model.predict import GeneralInferencer
-			salary = GeneralInferencer(datasets_file("inference.csv"))
+			salary = GeneralInferencer("./srcs/model/dataset/inference.csv")
 			jobs[job_id]["status"] = "done"
 			jobs[job_id]["salary"] = salary
 			print("[predict] Inference completed.", flush=True)
@@ -137,13 +136,13 @@ def main():
 			else:
 				print(f"[predict] reçu type={type(body).__name__}", flush=True)
 		df = pd.DataFrame([body])
-		df.to_csv(model_file("inference.csv"))
+		df.to_csv("./srcs/model/inference.csv")
 		return {
 			"message": "prediction started",
 			"received": body,
 		}
 
-
+	
 	return app
 
 
