@@ -36,11 +36,17 @@ def GeneralTrainer():
 	salary_data_module.setup(stage="fit")
 	salary_model = SalaryModel(nb_features=salary_data_module.nb_features)
 
+	import sys
+	sys.stdout.reconfigure(line_buffering=True) if hasattr(sys.stdout, "reconfigure") else None
+	sys.stderr.reconfigure(line_buffering=True) if hasattr(sys.stderr, "reconfigure") else None
+	print(f"column names: {salary_data_module.column_names}", flush=True)
+	sys.stdout.flush()
+
 	callbacks = [
-			EarlyStopping(monitor="val_loss", mode="min", patience=5, verbose=True),
+			EarlyStopping(monitor="val_r2", mode="max", patience=10, verbose=True),
 	]
 	trainer = L.Trainer(
-		#max_epochs=100,
+		# max_epochs=100,
 		max_epochs=1,
 		logger=mlf_logger,
 		accelerator="cpu",

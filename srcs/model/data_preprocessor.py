@@ -142,11 +142,11 @@ class SalaryDataModule(L.LightningDataModule):
 
 		self.ct = ColumnTransformer(transformers=[
 			('numerical', num_pipeline, need_numerical_encoding),
-			('binary', target_pipeline, need_binary_encoding),
+			('binary', OneHotEncoder(drop='first', handle_unknown='ignore', sparse_output=False, dtype=int), need_binary_encoding),
 			('ordinal', SmartOrdinalEncoder(), need_ordinal_encoding),
 			('one_hot', SmartOneHotEncoder(), need_hot_encoding),
 			('multi_label', SmartMultilabelEncoder(), need_multi_label_encoding),
-			('target', TargetEncoder(smoothing=10.0), need_target_encoding),
+			('target', target_pipeline, need_target_encoding),
 		])
 	
 	def update_currency(self):
