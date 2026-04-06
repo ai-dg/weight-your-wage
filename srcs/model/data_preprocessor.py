@@ -17,23 +17,24 @@ from sklearn.pipeline import Pipeline
 from srcs.model.scikit_encoder import SmartOrdinalEncoder, SmartMultilabelEncoder, SmartOneHotEncoder
 from srcs.model.features_answer import get_features, get_features_answers
 
+import os
+from loguru import logger
 # from model.preprocessor_base import BasePreprocessor
 # from model.scikit_encoder import SmartOrdinalEncoder, SmartMultilabelEncoder, SmartOneHotEncoder
 # from model.features_answer import get_features, get_features_answers
 
 # class TrainingPreprocessor(BasePreprocessor):
 
-class``
-
 class SalaryDataModule(L.LightningDataModule):
 
-	def __init__(self, data):
+	def __init__(self, data=None, artifact_path=None):
 		super().__init__()
 		self.data = data
 		self.batch_size = 32
 		self.nb_features = 0
 		self.fit_encoder_filename = "fit_encoder.joblib"
 		self.target_scaler_filename = "target_scaler.joblib"
+		self.artifact_path = artifact_path
 
 	def prepare_data(self):
 		pass
@@ -51,15 +52,17 @@ class SalaryDataModule(L.LightningDataModule):
 		elif stage == 'test':
 			self.X_test = pd.read_csv("./srcs/model/datasets/X_test.csv")
 			self.y_test = pd.read_csv("./srcs/model/datasets/y_test.csv")
-			self.ct = joblib.load(self.fit_encoder_filename)
-			self.scaler_y = joblib.load(self.target_scaler_filename)
+			self.ct = joblib.load(os.path.join(self.artifact_path, self.fit_encoder_filename))
+			self.scaler_y = joblib.load(os.path.join(self.artifact_path, self.target_scaler_filename))
 
 			self.X_test_scaled = self.ct.transform(self.X_test)
 			self.y_test_log = np.log1p(self.y_test)
+			logger.info(f"y_test : {self.y_test_log.shape}")
+			# self.y_test_log = self.y_test_log[:,1]
 			self.y_test_scaled = self.scaler_y.transform(self.y_test_log)
 		elif stage == 'predict':
 			print("data: ", self.data)
-			self.df_predict = pd.DataFrame(self.data)
+			self.df_predict = pd.DataFrame([self.data])
 			print("predict_df: ", self.df_predict)
 			self.ct = joblib.load(self.fit_encoder_filename)
 			self.scaler_y = joblib.load(self.target_scaler_filename) #Maybe not needed here
@@ -190,8 +193,8 @@ class SalaryDataModule(L.LightningDataModule):
 
 		self.X_test = X_test
 		self.y_test = y_test.to_frame()
-		X_test.to_csv("./srcs/model/datasets/X_test.csv")
-		y_test.to_csv("./srcs/model/datasets/y_test.csv")
+		X_test.to_csv("./srcs/model/datasets/X_test.csv", index=False)
+		y_test.to_csv("./srcs/model/datasets/y_test.csv", index=False)
 
 		X_train, X_val, y_train, y_val = train_test_split(X_split, y_split, random_state=seed, test_size=ratio_val, shuffle=True)
 
@@ -264,6 +267,7 @@ class SalaryDataModule(L.LightningDataModule):
 		self.y_val_log = np.log1p(self.y_val)
 		self.y_val_scaled = self.scaler_y.transform(self.y_val_log)
 		#End
+		logger.info(f"y_train : {self.y_train_log.shape}")
 
 		joblib.dump(self.ct, self.fit_encoder_filename)
 		joblib.dump(self.scaler_y, self.target_scaler_filename)
