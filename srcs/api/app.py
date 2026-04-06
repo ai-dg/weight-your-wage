@@ -5,6 +5,7 @@ import pandas as pd
 from fastapi.responses import JSONResponse
 import uuid
 import datetime
+import json
 
 
 jobs = {}
@@ -43,14 +44,10 @@ def main():
 			sys.stdout.flush()
 			sys.stderr.flush()
 
-	def _run_inference(job_id: str, body: dict):
-		import sys
-		sys.stdout.reconfigure(line_buffering=True) if hasattr(sys.stdout, "reconfigure") else None
-		sys.stderr.reconfigure(line_buffering=True) if hasattr(sys.stderr, "reconfigure") else None
-		df = pd.DataFrame([body])
+	def _run_inference(job_id: str, data: dict | None):
 		try:
 			from srcs.model.predict import GeneralInferencer
-			salary = GeneralInferencer(df)
+			salary = GeneralInferencer(data)
 			jobs[job_id]["status"] = "done"
 			jobs[job_id]["salary"] = salary
 			print("[predict] Inference completed.", flush=True)
@@ -59,10 +56,6 @@ def main():
 			print(f"[predict] Error: {e}", flush=True)
 			import traceback
 			traceback.print_exc()
-		finally:
-			sys.stdout.flush()
-			sys.stderr.flush()
-		
 
 	@app.post("/jobs/train")
 	def train(background_tasks: BackgroundTasks):
@@ -95,14 +88,25 @@ def main():
 		}
 
 	@app.post("/jobs/predict")
-	def predict(background_tasks: BackgroundTasks):
+	async def predict(background_tasks: BackgroundTasks, request: Request):
+		try:
+			data = await request.json()
+		except JSONDecodeError:
+			return JSONResponse(
+				status_code=400,
+				content={
+					"error": "Bad JSOn formnatting",
+					"status_code": 400
+				}
+			)
+
 		job_id = str(uuid.uuid4())
 		jobs[job_id] = {
 			"task": "predict",
 			"status": "pending",
 			"created_at": str(datetime.datetime.now())
 		}
-		background_tasks.add_task(_run_inference, job_id=job_id)
+		background_tasks.add_task(_run_inference, data=data, job_id=job_id)
 		return {
 			"status": "inference started",
 			"job_id": job_id,

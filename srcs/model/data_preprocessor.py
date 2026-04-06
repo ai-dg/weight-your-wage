@@ -42,7 +42,7 @@ class SalaryDataModule(L.LightningDataModule):
 			self.dataset_EDA = self.df.copy()
 			self.dataset_EDA = self.ct.fit_transform(self.dataset_EDA)
 		if stage == 'fit':
-			self.df = data if isinstance(data, pd.DataFrame) else pd.read_csv(self.data)
+			self.df = self.data if isinstance(self.data, pd.DataFrame) else pd.read_csv(self.data)
 			self.df = self.df[get_features()].copy()
 			self.init_pipeline()
 			self.fit_pipeline()
@@ -56,7 +56,9 @@ class SalaryDataModule(L.LightningDataModule):
 			self.y_test_log = np.log1p(self.y_test)
 			self.y_test_scaled = self.scaler_y.transform(self.y_test_log)
 		elif stage == 'predict':
-			self.df = data if isinstance(data, pd.DataFrame) else pd.read_csv(self.data)
+			print("data: ", self.data)
+			self.df_predict = pd.DataFrame(self.data)
+			print("predict_df: ", self.df_predict)
 			self.ct = joblib.load(self.fit_encoder_filename)
 			self.scaler_y = joblib.load(self.target_scaler_filename) #Maybe not needed here
 			self.X_predict_scaled = self.ct.transform(self.df_predict)

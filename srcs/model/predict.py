@@ -5,14 +5,12 @@ import mlflow
 import torch
 import lightning as L
 import os
+import pandas as pd
 
 MODEL_NAME = "salary_predictor"
 CHAMPION_ALIAS = "champion"
 
-def GeneralInferencer(data: str | pd.DataFrame | None = None):
-    if data is None:
-        data = "./srcs/model/datasets/inference.csv"
-
+def GeneralInferencer(data: dict):
     client = MlflowClient()
 
     model_version = client.get_model_version_by_alias(
@@ -22,7 +20,7 @@ def GeneralInferencer(data: str | pd.DataFrame | None = None):
 
     run_id = model_version.run_id
 
-    salary_data_module = SalaryDataModule(path)
+    salary_data_module = SalaryDataModule(data)
 
     os.system(f"rm -rf {salary_data_module.fit_encoder_filename} {salary_data_module.target_scaler_filename}")
 
@@ -34,6 +32,8 @@ def GeneralInferencer(data: str | pd.DataFrame | None = None):
         artifact_uri=f"runs:/{run_id}/preprocess/{salary_data_module.target_scaler_filename}",
         dst_path="./"
     )
+
+    salary_data_module.setup(stage="predict")
 
     salary_model = mlflow.pytorch.load_model(f"models:/{MODEL_NAME}@{CHAMPION_ALIAS}")
     trainer = L.Trainer()
