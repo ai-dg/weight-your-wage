@@ -23,6 +23,8 @@ from srcs.model.features_answer import get_features, get_features_answers
 
 # class TrainingPreprocessor(BasePreprocessor):
 
+class``
+
 class SalaryDataModule(L.LightningDataModule):
 
 	def __init__(self, data):

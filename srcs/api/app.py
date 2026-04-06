@@ -5,6 +5,7 @@ import pandas as pd
 from fastapi.responses import JSONResponse
 import uuid
 import datetime
+import loguru
 
 
 jobs = {}
@@ -16,7 +17,25 @@ def main():
 	app.get("/")(lambda: {"message": "Hello World"})
 
 	def _run_test(job_id: str):
-		pass
+		import sys
+		import logging
+		sys.stdout.reconfigure(line_buffering=True) if hasattr(sys.stdout, "reconfigure") else None
+		sys.stderr.reconfigure(line_buffering=True) if hasattr(sys.stderr, "reconfigure") else None
+		logging.basicConfig(level=logging.INFO, format="%(message)s", stream=sys.stdout, force=True)
+		for name in ("lightning", "pytorch_lightning", "model"):
+			logging.getLogger(name).setLevel(logging.INFO)
+			for h in logging.getLogger(name).handlers:
+		print("[test] Starting testing...")
+		try:
+			from srcs.model.test import GeneralTester
+			GeneralTester()
+			jobs[job_id]["status"] = "done"
+			print("[test] Testing completed.")
+		except Exception as e:
+			jobs[job_id]["status"] = "failed"
+			print(f"[test] Error: {e}")
+			import traceback
+			traceback.print_exc()
 
 	def _run_training(job_id: str):
 		import sys
@@ -79,15 +98,15 @@ def main():
 			"message": "Training is running in the background."
 		}
 
-	@app.post("/jobs/test")
-	def test(background_tasks: BackgroundTasks):
+	@app.post("/jobs/test/{version}")
+	def test(version: str, background_tasks: BackgroundTasks):
 		job_id = str(uuid.uuid4())
 		jobs[job_id] = {
-			"task": "train",
+			"task": "test",
 			"status": "pending",
 			"created_at": str(datetime.datetime.now())
 		}
-		background_tasks.add_task(_run_test, job_id=job_id)
+		background_tasks.add_task(_run_test, version=version,job_id=job_id)
 		return {
 			"status": "test started",
 			"job_id": job_id,
@@ -95,14 +114,26 @@ def main():
 		}
 
 	@app.post("/jobs/predict")
-	def predict(background_tasks: BackgroundTasks):
+	def predict(background_tasks: BackgroundTasks, request: Request):
+		"""POST JSON aligné sur le formulaire / modèle. Ne renvoie pas l’objet Request (non JSON-serializable)."""
+		body = None
+		try:
+			body = await request.json()
+		except Exception as exc:
+			print(f"[predict] corps JSON invalide ou vide: {exc}", flush=True)
+		else:
+			if isinstance(body, dict):
+				print(f"[predict] reçu {len(body)} champs: {list(body.keys())}", flush=True)
+			else:
+				print(f"[predict] reçu type={type(body).__name__}", flush=True)
+		
 		job_id = str(uuid.uuid4())
 		jobs[job_id] = {
 			"task": "predict",
 			"status": "pending",
 			"created_at": str(datetime.datetime.now())
 		}
-		background_tasks.add_task(_run_inference, job_id=job_id)
+		background_tasks.add_task(_run_inference, job_id=job_id, body=body)
 		return {
 			"status": "inference started",
 			"job_id": job_id,
