@@ -43,13 +43,14 @@ def main():
 			sys.stdout.flush()
 			sys.stderr.flush()
 
-	def _run_inference(job_id: str):
+	def _run_inference(job_id: str, body: dict):
 		import sys
 		sys.stdout.reconfigure(line_buffering=True) if hasattr(sys.stdout, "reconfigure") else None
 		sys.stderr.reconfigure(line_buffering=True) if hasattr(sys.stderr, "reconfigure") else None
+		df = pd.DataFrame([body])
 		try:
 			from srcs.model.predict import GeneralInferencer
-			salary = GeneralInferencer("./srcs/model/dataset/inference.csv")
+			salary = GeneralInferencer(df)
 			jobs[job_id]["status"] = "done"
 			jobs[job_id]["salary"] = salary
 			print("[predict] Inference completed.", flush=True)
@@ -124,19 +125,7 @@ def main():
 
 	@app.post("/predict")
 	async def predict(request: Request):
-		"""POST JSON aligné sur le formulaire / modèle. Ne renvoie pas l’objet Request (non JSON-serializable)."""
-		body = None
-		try:
-			body = await request.json()
-		except Exception as exc:
-			print(f"[predict] corps JSON invalide ou vide: {exc}", flush=True)
-		else:
-			if isinstance(body, dict):
-				print(f"[predict] reçu {len(body)} champs: {list(body.keys())}", flush=True)
-			else:
-				print(f"[predict] reçu type={type(body).__name__}", flush=True)
-		df = pd.DataFrame([body])
-		df.to_csv("./srcs/model/inference.csv")
+		
 		return {
 			"message": "prediction started",
 			"received": body,

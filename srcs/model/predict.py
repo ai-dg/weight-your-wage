@@ -9,7 +9,10 @@ import os
 MODEL_NAME = "salary_predictor"
 CHAMPION_ALIAS = "champion"
 
-def GeneralInferencer(path):
+def GeneralInferencer(data: str | pd.DataFrame | None = None):
+    if data is None:
+        data = "./srcs/model/datasets/inference.csv"
+
     client = MlflowClient()
 
     model_version = client.get_model_version_by_alias(
@@ -49,4 +52,4 @@ def GeneralInferencer(path):
     return float(salary_array[0][0])
     
 if __name__ == "__main__" :
-    GeneralInferencer("./srcs/model/datasets/inference.csv")
+    GeneralInferencer()

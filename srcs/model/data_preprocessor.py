@@ -25,9 +25,9 @@ from srcs.model.features_answer import get_features, get_features_answers
 
 class SalaryDataModule(L.LightningDataModule):
 
-	def __init__(self, path):
+	def __init__(self, data):
 		super().__init__()
-		self.path = path
+		self.data = data
 		self.batch_size = 32
 		self.nb_features = 0
 		self.fit_encoder_filename = "fit_encoder.joblib"
@@ -37,14 +37,12 @@ class SalaryDataModule(L.LightningDataModule):
 		pass
 
 	def setup(self, stage:str):
-		# if stage != predict
-		# 	self.init_pipeline()
 		if stage == 'EDA':
 			self.init_pipeline()
 			self.dataset_EDA = self.df.copy()
 			self.dataset_EDA = self.ct.fit_transform(self.dataset_EDA)
 		if stage == 'fit':
-			self.df = pd.read_csv(self.path)
+			self.df = data if isinstance(data, pd.DataFrame) else pd.read_csv(self.data)
 			self.df = self.df[get_features()].copy()
 			self.init_pipeline()
 			self.fit_pipeline()
@@ -58,7 +56,7 @@ class SalaryDataModule(L.LightningDataModule):
 			self.y_test_log = np.log1p(self.y_test)
 			self.y_test_scaled = self.scaler_y.transform(self.y_test_log)
 		elif stage == 'predict':
-			self.df_predict = pd.read_csv(self.path)
+			self.df = data if isinstance(data, pd.DataFrame) else pd.read_csv(self.data)
 			self.ct = joblib.load(self.fit_encoder_filename)
 			self.scaler_y = joblib.load(self.target_scaler_filename) #Maybe not needed here
 			self.X_predict_scaled = self.ct.transform(self.df_predict)
