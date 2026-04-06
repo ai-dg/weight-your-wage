@@ -3,6 +3,20 @@ import lightning as L
 import torch.nn.functional as F
 from torchmetrics.regression import R2Score
 
+import torch
+import numpy as np
+import random
+
+seed = 42
+random.seed(seed)
+np.random.seed(seed)
+# torch.manual_seed(seed)
+
+# torch.backends.cudnn.deterministic = True
+# torch.backends.cudnn.benchmark = False
+
+# torch.use_deterministic_algorithms(True)
+L.seed_everything(42, workers=True)
 
 class SalaryModel(L.LightningModule):
 

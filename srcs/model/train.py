@@ -20,7 +20,6 @@ lt.monkey_patch()
 mlflow.set_tracking_uri(MLFLOW_URI)
 mlflow.set_experiment(EXPIREMENT_NAME)
 
-
 def GeneralTrainer():
 
 	#Start clean
@@ -34,13 +33,15 @@ def GeneralTrainer():
 
 	salary_data_module = SalaryDataModule("./srcs/model/datasets/survey_results_public.csv")
 	salary_data_module.setup(stage="fit")
+	L.seed_everything(47, workers=True)
 	salary_model = SalaryModel(nb_features=salary_data_module.nb_features, lr=1e-5)
 
 	callbacks = [
 			EarlyStopping(monitor="val_r2", mode="max", patience=5, verbose=True),
 	]
 	trainer = L.Trainer(
-		max_epochs=100,
+		deterministic=True,
+		max_epochs=10,
 		logger=mlf_logger,
 		accelerator="cpu",
 		enable_progress_bar=False,

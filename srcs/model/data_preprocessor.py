@@ -32,14 +32,6 @@ class SalaryDataModule(L.LightningDataModule):
 		self.nb_features = 0
 		self.fit_encoder_filename = "fit_encoder.joblib"
 		self.target_scaler_filename = "target_scaler.joblib"
-		# try :
-		# 	self.df = pd.read_csv(path)
-		# 	self.features = get_features()
-		# 	self.df = self.df[self.features].copy()
-		# 	self.preprocess_state = {}
-		# except Exception as e :
-		# 	print(f"Error : {e}")
-		# 	raise RuntimeError(f"Error : {e}")
 
 	def prepare_data(self):
 		pass
@@ -217,16 +209,6 @@ class SalaryDataModule(L.LightningDataModule):
 	def drop_features(self, features:list[str]):
 		self.df.drop(columns=features, inplace=True)
 
-	def replace_nan_median(self, feature: str):
-		median = self.df[feature].median()
-		self.df[feature] = self.df[feature].fillna(median)
-		return median
-
-	def replace_nan_frequent(self, feature: str):
-		most_frequent = self.df[feature].mode()[0]
-		self.df[feature] = self.df[feature].fillna(most_frequent)
-		return most_frequent
-
 
 	def extract_target(self):
 		"""
@@ -241,27 +223,6 @@ class SalaryDataModule(L.LightningDataModule):
 		y = self.df.loc[:,"CompTotalEuro"]
 		X = self.df.drop("CompTotalEuro", axis=1)
 		return X, y
-
-	# def load_data_to_torch(self):
-
-	# 	X_tensor_train = tensor(self.X_train_scaled, dtype=float32)
-	# 	X_tensor_val = tensor(self.X_val_scaled, dtype=float32)
-	# 	X_tensor_test = tensor(self.X_test_scaled, dtype=float32)
-
-	# 	y_tensor_train = tensor(self.y_train_scaled, dtype=float32)
-	# 	y_tensor_val = tensor(self.y_val_scaled, dtype=float32)
-	# 	y_tensor_test = tensor(self.y_test_scaled, dtype=float32)
-
-	# 	tensor_dataset_train = TensorDataset(X_tensor_train, y_tensor_train)
-	# 	tensor_dataset_val = TensorDataset(X_tensor_val, y_tensor_val)
-	# 	tensor_dataset_test = TensorDataset(X_tensor_test, y_tensor_test)
-
-	# 	Train_loader = DataLoader(tensor_dataset_train, batch_size=32, shuffle=True)
-	# 	Val_loader = DataLoader(tensor_dataset_val, batch_size=32)
-	# 	Test_loader = DataLoader(tensor_dataset_test, batch_size=32)
-
-
-	# 	return Train_loader, Val_loader, Test_loader
 
 	######################################################################
 	##### 					INIT PIPELINE							 #####
@@ -284,9 +245,9 @@ class SalaryDataModule(L.LightningDataModule):
 		self.X_train_scaled = self.ct.fit_transform(self.X_train, self.y_train)
 
 		feature_names = self.ct.get_feature_names_out()
-		print(f"Input Features: {len(self.X_train.columns)}")
-		print(f"Output Features (after encoding): {len(feature_names)}")
-		print(f"All Output Features: {feature_names}")
+		# print(f"Input Features: {len(self.X_train.columns)}")
+		# print(f"Output Features (after encoding): {len(feature_names)}")
+		# print(f"All Output Features: {feature_names}")
 
 		self.X_val_scaled = self.ct.transform(self.X_val)
 
