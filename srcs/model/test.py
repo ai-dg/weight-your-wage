@@ -36,12 +36,6 @@ def GeneralTester(version: str | None = None, data: str | None = None):
     #Start clean
     mlflow.end_run()
 
-    #Setup Logger
-    mlf_logger = MLFlowLogger(
-        tracking_uri=MLFLOW_URI,
-        experiment_name=EXPIREMENT_NAME
-    )
- 
     client = MlflowClient()
 
     if version is None:
@@ -57,6 +51,13 @@ def GeneralTester(version: str | None = None, data: str | None = None):
 
     run_id = model_version.run_id
 
+    #Setup Logger
+    mlf_logger = MLFlowLogger(
+        tracking_uri=MLFLOW_URI,
+        experiment_name=EXPIREMENT_NAME,
+        run_id=run_id
+    )
+ 
     #Delete pre existing file (rtifacts)
     #os.system(f"rm -rf {salary_data_module.fit_encoder_filename} {salary_data_module.target_scaler_filename}")
 
