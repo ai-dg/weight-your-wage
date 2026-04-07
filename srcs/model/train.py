@@ -41,8 +41,7 @@ def GeneralTrainer():
 	]
 	trainer = L.Trainer(
 		deterministic=True,
-		max_epochs=1,
-		#max_epochs=10,
+		max_epochs=10,
 		logger=mlf_logger,
 		accelerator="cpu",
 		enable_progress_bar=False,

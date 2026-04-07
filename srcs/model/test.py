@@ -55,9 +55,7 @@ def GeneralTester(version: str | None = None, data: str | None = None):
             version=version
         )
 
-
     run_id = model_version.run_id
-
 
     #Delete pre existing file (rtifacts)
     #os.system(f"rm -rf {salary_data_module.fit_encoder_filename} {salary_data_module.target_scaler_filename}")

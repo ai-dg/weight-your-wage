@@ -7,9 +7,13 @@ import lightning as L
 import os
 import pandas as pd
 
+MLFLOW_URI = "http://mlflow-server:5000"
+EXPIREMENT_NAME = "SalariOps"
 MODEL_NAME = "salary_predictor"
 CHAMPION_ALIAS = "champion"
 
+mlflow.set_tracking_uri(MLFLOW_URI)
+mlflow.set_experiment(EXPIREMENT_NAME)
 def GeneralInferencer(data: dict):
     client = MlflowClient()
 
@@ -20,7 +24,7 @@ def GeneralInferencer(data: dict):
 
     run_id = model_version.run_id
 
-    salary_data_module = SalaryDataModule(data)
+    salary_data_module = SalaryDataModule(data=data)
 
     os.system(f"rm -rf {salary_data_module.fit_encoder_filename} {salary_data_module.target_scaler_filename}")
 
