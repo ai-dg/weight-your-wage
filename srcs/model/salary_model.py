@@ -6,6 +6,7 @@ from torchmetrics.regression import R2Score
 import torch
 import numpy as np
 import random
+import mlflow
 
 seed = 42
 random.seed(seed)
@@ -79,5 +80,47 @@ class SalaryModel(L.LightningModule):
 	def configure_optimizers(self):
 		optimizer = optim.Adam(self.parameters(), lr=self.lr, weight_decay=1e-4)
 		return optimizer
+
+	def on_train_end(self):
+		# Get val dataset
+		val_loader = self.trainer.datamodule.val_dataloader()
+		scaler = self.trainer.datamodule.scaler_y
+		#Eval mode (To stop training)
+		self.eval()
+
+		all_y_true = []
+		all_y_hat = []
+		with torch.no_grad():
+			for batch in val_loader:
+				x, y = batch
+				#Precise where to do the calculation
+				y_hat = self(x.to(self.device))
+
+				#Move data to cpu
+				all_y_true.append(y.cpu())
+				all_y_hat.append(y_hat.cpu())
+
+		# 2. Convert lists to single tensors
+		y_true_scaled = torch.cat(all_y_true).numpy().reshape(-1, 1)
+		y_hat_scaled = torch.cat(all_y_hat).numpy().reshape(-1, 1)
+		
+		y_true_log = scaler.inverse_transform(y_true_scaled)
+		y_hat_log = scaler.inverse_transform(y_hat_scaled)
+		
+		y_true = torch.expm1(y_true_log)
+		y_hat = torch.expm1(y_hat_log)
+
+		rmse = np.sqrt(np.mean((y_true_dollars - y_hat_dollars)**2))
+		content = {
+			"rmse" : rmse
+		}
+		with open("rmse.json", 'w') as f:
+			json.dump(content, f)
+
+		self.logger.experiment.log_artifact(
+			run_id=self.logger.run_id,
+			local_path="rmse.json",
+			artifact_path="rmse"
+		)
 
 # model = SalaryModel(nb_features=182)
