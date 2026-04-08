@@ -7,6 +7,7 @@ import lightning as L
 import os
 import pandas as pd
 from loguru import logger
+import json
 
 MLFLOW_URI = "http://mlflow-server:5000"
 EXPIREMENT_NAME = "SalariOps"
@@ -54,9 +55,8 @@ def GeneralInferencer(data: dict):
     )
     
     with open("rmse.json", 'r') as f:
-        rmse = json.load(f)['rmse']
-    
-    logger.info(f"Rmse : {rmse}")
+        rmse = float(json.load(f)['rmse'])
+
     salary_array = np.expm1(
         salary_data_module.scaler_y.inverse_transform(
                 torch.cat(y_hat).numpy()

@@ -7,6 +7,8 @@ import torch
 import numpy as np
 import random
 import mlflow
+import json
+from loguru import logger
 
 seed = 42
 random.seed(seed)
@@ -107,12 +109,29 @@ class SalaryModel(L.LightningModule):
 		y_true_log = scaler.inverse_transform(y_true_scaled)
 		y_hat_log = scaler.inverse_transform(y_hat_scaled)
 		
-		y_true = torch.expm1(y_true_log)
-		y_hat = torch.expm1(y_hat_log)
+		y_true = np.expm1(y_true_log)
+		y_hat = np.expm1(y_hat_log)
 
-		rmse = np.sqrt(np.mean((y_true_dollars - y_hat_dollars)**2))
+		import plotly.figure_factory as ff
+		fig = ff.create_distplot(
+			[y_true.flatten(), y_hat.flatten()],
+			["y_true", "y_hat"],
+			show_hist=False)
+		
+		fig.update_layout(title_text='Superposed Density Comparison')
+		self.logger.experiment.log_figure(
+			run_id=self.logger.run_id,
+			figure=fig,
+			artifact_file="visual_analysis/density_comparison.html"
+		)
+
+		logger.info(f"y_true : {y_true}")
+		logger.info(f"y_hat : {y_hat}")
+		# logger.info(f"y_true - y_hat : {}")
+		rmse = np.sqrt(np.mean((y_true - y_hat)**2))
+		logger.info(f"rmse : {rmse}")
 		content = {
-			"rmse" : rmse
+			"rmse" : str(rmse)
 		}
 		with open("rmse.json", 'w') as f:
 			json.dump(content, f)
