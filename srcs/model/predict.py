@@ -40,7 +40,11 @@ def GeneralInferencer(data: dict):
     salary_data_module.setup(stage="predict")
 
     salary_model = mlflow.pytorch.load_model(f"models:/{MODEL_NAME}@{CHAMPION_ALIAS}")
-    trainer = L.Trainer()
+    trainer = L.Trainer(
+        accelerator="gpu",
+        devices=1,
+        precision="16-mixed"
+    )
 
     y_hat = trainer.predict(
 		model=salary_model,
