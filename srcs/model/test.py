@@ -75,9 +75,9 @@ def GeneralTester(version: str | None = None, data: str | None = None):
 
         salary_model = mlflow.pytorch.load_model(f"models:/{MODEL_NAME}/{model_version.version}")
         trainer = L.Trainer(
-            accelerator="gpu",
-            devices=1,
-            precision="16-mixed",
+            accelerator="auto",
+            devices="auto",
+            precision="16-mixed" if torch.cuda.is_available() else "32-true",
             logger=mlf_logger
         )
 

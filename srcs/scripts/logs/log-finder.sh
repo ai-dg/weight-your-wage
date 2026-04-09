@@ -1,4 +1,5 @@
 #!/bin/bash
+HAS_GPU=$1
 
 LOG_DIR=./srcs/logs
 PID_FILE="$LOG_DIR/pids.txt"
@@ -6,11 +7,17 @@ PID_FILE="$LOG_DIR/pids.txt"
 rm -f "$PID_FILE"
 rm -rf ./srcs/logs/*
 
+if [ $HAS_GPU -eq "yes" ]; then
+  FASTAPI_SERVICE=fastapi
+else
+  FASTAPI_SERVICE=fastapi-gpu
+fi
+
 SERVICES=(
   grafana
   minio
   mlflow-server
-  fastapi
+  $FASTAPI_SERVICE
   nginx
   postgres_db
   pgadmin_contain
