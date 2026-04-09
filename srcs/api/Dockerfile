@@ -4,7 +4,6 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV UV_SYSTEM_PYTHON=1
-# TODO - maybe PYTHONPATH can be removed
 ENV PYTHONPATH=/app/srcs
 
 WORKDIR /app/

@@ -189,13 +189,6 @@ services:
       - model_network
 
 
-  # ── Gateway ────────────────────────────────────────────────────────────────
-  nginx:
-    container_name: nginx
-    build:
-      context: ./services/nginx
-      dockerfile: Dockerfile
-
   # ── Database (app) ────────────────────────────────────────────────────────
   postgres:
     image: postgres:15-alpine

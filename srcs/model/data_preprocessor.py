@@ -61,9 +61,9 @@ class SalaryDataModule(L.LightningDataModule):
 			# self.y_test_log = self.y_test_log[:,1]
 			self.y_test_scaled = self.scaler_y.transform(self.y_test_log)
 		elif stage == 'predict':
-			print("data: ", self.data)
+			logger.info("data: ", self.data)
 			self.df_predict = pd.DataFrame([self.data])
-			print("predict_df: ", self.df_predict)
+			logger.info("predict_df: ", self.df_predict)
 			self.ct = joblib.load(self.fit_encoder_filename)
 			self.scaler_y = joblib.load(self.target_scaler_filename) #Maybe not needed here
 			self.X_predict_scaled = self.ct.transform(self.df_predict)
@@ -159,7 +159,7 @@ class SalaryDataModule(L.LightningDataModule):
 		"""
 
 		Salary_min = 1000
-		Salary_max = 999999
+		Salary_max = 350_000
 
 		# Use float64 limit as a ceiling
 		FLOAT_MAX = np.finfo(np.float64).max
