@@ -1,15 +1,12 @@
 COMPOSE_FILE = srcs/docker-compose.yml
-COMPOSE_GPU_FILE = srcs/docker-compose.gpu.yml
-# Sans USE_GPU=1 : fastapi démarre sans réservation GPU (pas de toolkit requis).
-# USE_GPU=1 : activer après https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html
-COMPOSE = docker compose -f $(COMPOSE_FILE) $(if $(filter 1,$(USE_GPU)),-f $(COMPOSE_GPU_FILE),)
+COMPOSE = docker compose -f $(COMPOSE_FILE)
 
 ifneq (,$(wildcard srcs/.env))
 include srcs/.env
 export
 endif
 
-DATA_DIRS = .venv srcs/.venv srcs/data/postgres srcs/data/postgres_mlflow srcs/data/minio srcs/data/artifacts srcs/data/grafana_data srcs/data/prometheus srcs/logs
+DATA_DIRS = .venv srcs/data/postgres srcs/data/postgres_mlflow srcs/data/minio srcs/data/artifacts srcs/data/grafana_data srcs/data/prometheus srcs/logs
 
 .PHONY: build up down downv logs stop start clean fclean dirs fix-perms
 

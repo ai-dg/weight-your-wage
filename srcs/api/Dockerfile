@@ -1,41 +1,18 @@
-FROM debian:bookworm-slim
+FROM pytorch/pytorch:2.5.1-cuda12.4-cudnn9-runtime
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-RUN apt-get update && apt-get upgrade -y
-RUN apt-get install -y python3
-RUN apt-get install -y python3-pip
-RUN apt-get install -y python3-venv
-RUN apt-get install -y curl procps util-linux
-
-# ENV PATH=$PATH:/root/.local/bin
-# ENV PYTHONUNBUFFERED=1
-
-COPY pyproject.toml uv.lock /app/
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV UV_SYSTEM_PYTHON=1
+ENV PYTHONPATH=/app/srcs
 
 WORKDIR /app/
 
-# Compte système aligné sur UID/GID (sinon getpass.getpwuid → KeyError avec PyTorch / torch.compile)
-ARG UID=1000
-ARG GID=1000
-RUN groupadd --gid "${GID}" appuser \
-	&& useradd --uid "${UID}" --gid appuser --home-dir /app --no-create-home --shell /bin/sh appuser
-RUN chown -R "${UID}:${GID}" /app
-ENV APP_UID=${UID} APP_GID=${GID}
-ENV HOME=/app
-ENV USER=appuser
-ENV LOGNAME=appuser
-ENV UV_CACHE_DIR=/app/.cache/uv
-# .venv est souvent un bind mount : éviter les symlinks invalides hors conteneur
-ENV UV_LINK_MODE=copy
-ENV PYTHONPATH=/app/srcs
-ENV PYTHONUNBUFFERED=1
+COPY pyproject.toml uv.lock /app/
 
-# RUN uv python install 3.12 \
-# 	&& mkdir -p /opt \
-# 	&& cp -a /root/.local/share/uv/python /opt/uv-python \
-# 	&& chmod -R a+rX /opt/uv-python
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install --system --no-cache -e .
 
-# ENV PYTHONPATH=/app/.venv/lib/python3.12/site-packages
+EXPOSE 4243
 
-# RUN chmod +x /app/api/entrypoint.sh
-
-ENTRYPOINT ["/bin/sh", "/app/srcs/api/entrypoint.sh"]
+CMD ["uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "4243"]

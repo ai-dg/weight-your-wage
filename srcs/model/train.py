@@ -40,10 +40,12 @@ def GeneralTrainer():
 			EarlyStopping(monitor="val_r2", mode="max", patience=5, verbose=True),
 	]
 	trainer = L.Trainer(
+		accelerator="gpu",
+		devices=1,
+		precision="16-mixed",
 		deterministic=True,
-		max_epochs=10,
+		max_epochs=100,
 		logger=mlf_logger,
-		accelerator="cpu",
 		enable_progress_bar=False,
 		callbacks=callbacks
 	)

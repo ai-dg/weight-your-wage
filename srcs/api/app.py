@@ -19,51 +19,30 @@ def main():
 	app.get("/")(lambda: {"message": "Hello World"})
 
 	def _run_test(job_id: str, version:str | None):
-		import sys
-		import logging
-		sys.stdout.reconfigure(line_buffering=True) if hasattr(sys.stdout, "reconfigure") else None
-		sys.stderr.reconfigure(line_buffering=True) if hasattr(sys.stderr, "reconfigure") else None
-		logging.basicConfig(level=logging.INFO, format="%(message)s", stream=sys.stdout, force=True)
-		for name in ("lightning", "pytorch_lightning", "model"):
-			logging.getLogger(name).setLevel(logging.INFO)
-			for h in logging.getLogger(name).handlers:
-				h.setStream(sys.stdout)
-		print("[test] Starting testing...")
+		logger.info("[test] Starting testing...")
 		try:
 			from srcs.model.test import GeneralTester
 			GeneralTester(version=version)
 			jobs[job_id]["status"] = "done"
-			print("[test] Testing completed.")
+			logger.info("[test] Testing completed.")
 		except Exception as e:
 			jobs[job_id]["status"] = "failed"
-			print(f"[test] Error: {e}")
+			logger.error(f"[train] Error: {e}")
 			import traceback
 			traceback.print_exc()
 
 	def _run_training(job_id: str):
-		import sys
-		import logging
-		sys.stdout.reconfigure(line_buffering=True) if hasattr(sys.stdout, "reconfigure") else None
-		sys.stderr.reconfigure(line_buffering=True) if hasattr(sys.stderr, "reconfigure") else None
-		logging.basicConfig(level=logging.INFO, format="%(message)s", stream=sys.stdout, force=True)
-		for name in ("lightning", "pytorch_lightning", "model"):
-			logging.getLogger(name).setLevel(logging.INFO)
-			for h in logging.getLogger(name).handlers:
-				h.setStream(sys.stdout)
-		print("[train] Starting training...", flush=True)
+		logger.info("[train] Starting training...")
 		try:
 			from srcs.model.train import GeneralTrainer
 			GeneralTrainer()
 			jobs[job_id]["status"] = "done"
-			print("[train] Training completed.", flush=True)
+			logger.info("[train] Training completed.")
 		except Exception as e:
 			jobs[job_id]["status"] = "failed"
-			print(f"[train] Error: {e}", flush=True)
+			logger.error(f"[train] Error: {e}")
 			import traceback
 			traceback.print_exc()
-		finally:
-			sys.stdout.flush()
-			sys.stderr.flush()
 
 	def _run_inference(job_id: str, data: dict | None):
 		try:
@@ -71,10 +50,10 @@ def main():
 			salary = GeneralInferencer(data)
 			jobs[job_id]["status"] = "done"
 			jobs[job_id]["salary"] = salary
-			print("[predict] Inference completed.", flush=True)
+			logger.info("[predict] Inference completed.")
 		except Exception as e:
 			jobs[job_id]["status"] = "failed"
-			print(f"[predict] Error: {e}", flush=True)
+			logger.error(f"[train] Error: {e}")
 			import traceback
 			traceback.print_exc()
 
@@ -160,15 +139,6 @@ def main():
 		return jobs[job_id]
 	
 
-	@app.post("/predict")
-	async def predict(request: Request):
-		
-		return {
-			"message": "prediction started",
-			"received": body,
-		}
-
-	
 	return app
 
 

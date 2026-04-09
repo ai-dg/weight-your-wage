@@ -162,6 +162,17 @@ services:
         UID: ${UID:-1000}
         GID: ${GID:-1000}
       network: host
+    expose:
+      - 4243
+    ports:
+      - "0.0.0.0:4243:4243"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
     environment:
       - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
@@ -170,28 +181,13 @@ services:
       - APP_GID=${GID:-1000}
       - USER=appuser
       - LOGNAME=appuser
-    # GPU : Docker exige NVIDIA Container Toolkit sur l’hôte, sinon erreur
-    # « could not select device driver nvidia ». Activer avec USE_GPU=1 make …
-    # (fichier srcs/docker-compose.gpu.yml).
-    expose:
-      - 4243
-    ports:
-      - "0.0.0.0:4243:4243"
+      - NVIDIA_VISIBLE_DEVICES=all
     volumes:
       - model:/app/srcs/model/
       - api:/app/srcs/api/
-      # Même dossier : srcs/.venv (hôte) = /app/.uv-tool (conteneur) — uv + dépendances projet
-      - source_python:/app/.uv-tool
     networks:
       - model_network
 
-
-  # ── Gateway ────────────────────────────────────────────────────────────────
-  nginx:
-    container_name: nginx
-    build:
-      context: ./services/nginx
-      dockerfile: Dockerfile
 
   # ── Database (app) ────────────────────────────────────────────────────────
   postgres:
@@ -284,12 +280,6 @@ volumes:
       type: none
       o: bind
       device: ${PWD}/srcs/api
-  source_python:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${PWD}/srcs/.venv
   frontend_node_modules:
 
   prometheus_data:
