@@ -44,7 +44,7 @@ def GeneralTrainer():
 		devices=1,
 		precision="16-mixed",
 		deterministic=True,
-		max_epochs=100,
+		max_epochs=10,
 		logger=mlf_logger,
 		enable_progress_bar=False,
 		callbacks=callbacks

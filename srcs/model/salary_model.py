@@ -10,6 +10,10 @@ import mlflow
 import json
 from loguru import logger
 
+import plotly.figure_factory as ff
+from cleanlab import Datalab
+from cleanlab.regression.rank import get_label_quality_scores
+
 seed = 42
 random.seed(seed)
 np.random.seed(seed)
@@ -85,23 +89,57 @@ class SalaryModel(L.LightningModule):
 
 	def on_train_end(self):
 		# Get val dataset
-		val_loader = self.trainer.datamodule.val_dataloader()
+		val_dataloader = self.trainer.datamodule.val_dataloader()
+		train_dataloader = self.trainer.datamodule.train_dataloader()
 		scaler = self.trainer.datamodule.scaler_y
 		#Eval mode (To stop training)
 		self.eval()
 
+		#Density plot
+		X_val, y_true, y_hat = self.density_plot(val_dataloader, scaler, "val_density_comparison.html")
+		self.density_plot(train_dataloader, scaler, "train_density_comparison.html")
+
+		#log rmse
+		self.log_rmse(y_true, y_hat)
+
+		#check data / cleanlab
+		# quality_scores = get_label_quality_scores(
+		# 	labels=y_true.flatten(), 
+		# 	predictions=y_hat.flatten()
+		# )
+		# logger.info(f"Mean Label Quality: {np.mean(quality_scores)}")
+		
+		from cleanlab import Datalab
+
+		# 1. Organize data into a DataFrame or Dict
+		data = {"target": y_true.flatten()}
+		lab = Datalab(data, label_name="target", task='regression')
+
+		# 2. Run the audit (needs your features X to find outliers/duplicates)
+		logger.info(f"X_val shape : {X_val.shape}")
+		logger.info(f"y_true shape : {y_true.shape}")
+		logger.info(f"y_hat shape : {y_hat.shape}")
+		lab.find_issues(features=X_val, pred_probs=y_hat.flatten())
+
+		# 3. The "Truth" 
+		lab.report()
+
+	def density_plot(self, dataloader, scaler, html_file_name):
 		all_y_true = []
 		all_y_hat = []
+		all_X = []
 		with torch.no_grad():
-			for batch in val_loader:
+			for batch in dataloader:
 				x, y = batch
 				#Precise where to do the calculation
 				y_hat = self(x.to(self.device))
 
 				#Move data to cpu
+				all_X.append(x.cpu())
 				all_y_true.append(y.cpu())
 				all_y_hat.append(y_hat.cpu())
 
+		X_val = torch.cat(all_X).numpy()
 		# 2. Convert lists to single tensors
 		y_true_scaled = torch.cat(all_y_true).numpy().reshape(-1, 1)
 		y_hat_scaled = torch.cat(all_y_hat).numpy().reshape(-1, 1)
@@ -112,7 +150,6 @@ class SalaryModel(L.LightningModule):
 		y_true = np.expm1(y_true_log)
 		y_hat = np.expm1(y_hat_log)
 
-		import plotly.figure_factory as ff
 		fig = ff.create_distplot(
 			[y_true.flatten(), y_hat.flatten()],
 			["y_true", "y_hat"],
@@ -122,12 +159,11 @@ class SalaryModel(L.LightningModule):
 		self.logger.experiment.log_figure(
 			run_id=self.logger.run_id,
 			figure=fig,
-			artifact_file="visual_analysis/density_comparison.html"
+			artifact_file=f"visual_analysis/{html_file_name}"
 		)
+		return [X_val, y_true, y_hat]
 
-		logger.info(f"y_true : {y_true}")
-		logger.info(f"y_hat : {y_hat}")
-		# logger.info(f"y_true - y_hat : {}")
+	def log_rmse(self, y_true, y_hat):
 		rmse = np.sqrt(np.mean((y_true - y_hat)**2))
 		logger.info(f"rmse : {rmse}")
 		content = {
@@ -141,5 +177,3 @@ class SalaryModel(L.LightningModule):
 			local_path="rmse.json",
 			artifact_path="rmse"
 		)
-
-# model = SalaryModel(nb_features=182)

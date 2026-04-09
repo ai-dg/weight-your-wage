@@ -8,6 +8,7 @@ dependencies = [
     "anyio>=3.7.0,<4",
     "boto3>=1.42.71",
     "category-encoders>=2.8.1",
+    "cleanlab[all]>=2.9.0",
     "fastapi>=0.135.1",
     "kagglehub>=1.0.0",
     "lightning>=2.6.1",
