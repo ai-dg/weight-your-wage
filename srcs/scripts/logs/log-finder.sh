@@ -1,31 +1,13 @@
 #!/bin/bash
-HAS_GPU=$1
-
 LOG_DIR=./srcs/logs
 PID_FILE="$LOG_DIR/pids.txt"
 
 rm -f "$PID_FILE"
 rm -rf ./srcs/logs/*
 
-if [ $HAS_GPU -eq "yes" ]; then
-  FASTAPI_SERVICE=fastapi
-else
-  FASTAPI_SERVICE=fastapi-gpu
-fi
+ACTIVE_SERVICES=$(docker compose -f srcs/docker-compose.yml ps --services --filter "status=running")
 
-SERVICES=(
-  grafana
-  minio
-  mlflow-server
-  $FASTAPI_SERVICE
-  nginx
-  postgres_db
-  pgadmin_contain
-  frontend
-)
-
-for service in "${SERVICES[@]}"; do
-  echo "Starting follower logs for : $service"
+for service in $ACTIVE_SERVICES; do
   docker logs --follow "$service" > "$LOG_DIR/$service.log" 2>&1 &
   echo $! >> "$PID_FILE"
 done

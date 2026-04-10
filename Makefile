@@ -1,5 +1,5 @@
-COMPOSE_FILE = srcs/docker-compose.yml
-COMPOSE = docker compose -f $(COMPOSE_FILE)
+COMPOSE_FILES = srcs/docker-compose.yml
+COMPOSE_GPU_FILE = srcs/docker-compose.gpu.yml
 
 ifneq (,$(wildcard srcs/.env))
 include srcs/.env
@@ -14,36 +14,37 @@ DATA_DIRS = .venv srcs/data/postgres srcs/data/postgres_mlflow srcs/data/minio s
 # --- GPU Auto-Detection
 HAS_GPU := $(shell nvidia-smi > /dev/null 2>&1 && echo "yes" || echo "no")
 
-PROFILES_CMD :=
-
 ifeq ($(HAS_GPU),yes)
-PROFILES_CMD += --profile gpu
-$(info NVIDIA GPU detected! Activating GPU profile...)
+COMPOSE_FILES += -f COMPOSE_GPU_FILE
+$(info GPU mode: Enabled)
 else
-PROFILES_CMD += --profile cpu
-$(info No NVIDIA GPU found. Activating CPU profile...)
+$(info GPU mode: Disabled (CPU only))
 endif
 
+# --- Environment profile
+PROFILES :=
 ifneq ($(NODE_ENV),PROD)
-PROFILES_CMD += --profile dev
+PROFILES += --profile dev
 endif
+
+COMPOSE = docker compose -f $(COMPOSE_FILES) $(PROFILES)
 
 build: dirs
 	$(MAKE) dependencies-py
-	$(COMPOSE) $(PROFILES_CMD) build
-	$(COMPOSE) $(PROFILES_CMD) up -d --remove-orphans
+	$(COMPOSE) $(PROFILES) build
+	$(COMPOSE) $(PROFILES) up -d --remove-orphans
 	$(MAKE) logs-finder
 	sudo chmod -R 777 ./*
 
 up: dirs
-	$(COMPOSE) $(PROFILES_CMD) up -d --remove-orphans
+	$(COMPOSE) $(PROFILES) up -d --remove-orphans
 	
 down:
-	$(COMPOSE) $(PROFILES_CMD) down
+	$(COMPOSE) $(PROFILES) down
 
 downv:
 	$(MAKE) logs-kill-finder
-	$(COMPOSE) $(PROFILES_CMD) down -v
+	$(COMPOSE) $(PROFILES) down -v
 
 stop: down
 
@@ -52,11 +53,11 @@ start: down up
 
 
 logs:
-	$(COMPOSE) $(PROFILES_CMD) logs -f
+	$(COMPOSE) $(PROFILES) logs -f
 
 
 logs-svc:
-	$(COMPOSE) $(PROFILES_CMD) logs -f $(SVC)
+	$(COMPOSE) $(PROFILES) logs -f $(SVC)
 
 dirs:
 	@mkdir -p $(DATA_DIRS)
@@ -67,7 +68,7 @@ fix-perms:
 
 clean: down
 	@echo "Stopping services and removing containers..."
-	$(COMPOSE) $(PROFILES_CMD) down -v
+	$(COMPOSE) $(PROFILES) down -v
 
 logs-finder:
 	@bash srcs/scripts/logs/log-finder.sh $(HAS_GPU)
@@ -88,7 +89,7 @@ fclean: clean
 	@bash srcs/scripts/logs/kill-finder.sh 2>/dev/null || true
 
 	# Remove volumes and all images associated with this project
-	$(COMPOSE) $(PROFILES_CMD) down -v --rmi all --remove-orphans
+	$(COMPOSE) $(PROFILES) down -v --rmi all --remove-orphans
 
 	# Remove physical data directories created by 'dirs'
 	sudo rm -rf $(DATA_DIRS)

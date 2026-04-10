@@ -165,7 +165,7 @@ class SalaryDataModule(L.LightningDataModule):
 
 		Salary_min = 1000
 		# Salary_max = 999999
-		Salary_max = 100_000
+		Salary_max = 250_000
 
 		# Use float64 limit as a ceiling
 		FLOAT_MAX = np.finfo(np.float64).max

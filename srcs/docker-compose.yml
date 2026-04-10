@@ -155,7 +155,6 @@ services:
   # ── API ────────────────────────────────────────────────────────────────────
   fastapi:
     container_name: fastapi
-    profiles: ["cpu"]
     build:
       context: ..
       dockerfile: srcs/api/Dockerfile
@@ -181,19 +180,6 @@ services:
       - api:/app/srcs/api/
     networks:
       - model_network
-
-  fastapi-gpu:
-    extends: fastapi
-    container_name: fastapi-gpu
-    profiles: ["gpu"]
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-
 
   # ── Database (app) ────────────────────────────────────────────────────────
   postgres:
