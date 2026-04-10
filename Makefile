@@ -3,7 +3,7 @@ COMPOSE_GPU_FILE = srcs/docker-compose.gpu.yml
 
 ifneq (,$(wildcard srcs/.env))
 include srcs/.env
-export
+export PWD := $(shell pwd)
 endif
 
 DATA_DIRS = .venv srcs/data/postgres srcs/data/postgres_mlflow srcs/data/minio srcs/data/artifacts srcs/data/grafana_data srcs/data/prometheus srcs/logs
@@ -15,7 +15,7 @@ DATA_DIRS = .venv srcs/data/postgres srcs/data/postgres_mlflow srcs/data/minio s
 HAS_GPU := $(shell nvidia-smi > /dev/null 2>&1 && echo "yes" || echo "no")
 
 ifeq ($(HAS_GPU),yes)
-COMPOSE_FILES += -f COMPOSE_GPU_FILE
+COMPOSE_FILES += -f $(COMPOSE_GPU_FILE)
 $(info GPU mode: Enabled)
 else
 $(info GPU mode: Disabled (CPU only))
@@ -31,20 +31,20 @@ COMPOSE = docker compose -f $(COMPOSE_FILES) $(PROFILES)
 
 build: dirs
 	$(MAKE) dependencies-py
-	$(COMPOSE) $(PROFILES) build
-	$(COMPOSE) $(PROFILES) up -d --remove-orphans
+	$(COMPOSE) build
+	$(COMPOSE) up -d --remove-orphans
 	$(MAKE) logs-finder
 	sudo chmod -R 777 ./*
 
 up: dirs
-	$(COMPOSE) $(PROFILES) up -d --remove-orphans
+	$(COMPOSE) up -d --remove-orphans
 	
 down:
-	$(COMPOSE) $(PROFILES) down
+	$(COMPOSE) down
 
 downv:
 	$(MAKE) logs-kill-finder
-	$(COMPOSE) $(PROFILES) down -v
+	$(COMPOSE) down -v
 
 stop: down
 
@@ -53,11 +53,11 @@ start: down up
 
 
 logs:
-	$(COMPOSE) $(PROFILES) logs -f
+	$(COMPOSE) logs -f
 
 
 logs-svc:
-	$(COMPOSE) $(PROFILES) logs -f $(SVC)
+	$(COMPOSE) logs -f $(SVC)
 
 dirs:
 	@mkdir -p $(DATA_DIRS)
@@ -68,10 +68,10 @@ fix-perms:
 
 clean: down
 	@echo "Stopping services and removing containers..."
-	$(COMPOSE) $(PROFILES) down -v
+	$(COMPOSE) down -v
 
 logs-finder:
-	@bash srcs/scripts/logs/log-finder.sh $(HAS_GPU)
+	@bash srcs/scripts/logs/log-finder.sh
 
 logs-kill-finder:
 	@bash srcs/scripts/logs/kill-finder.sh
@@ -89,7 +89,7 @@ fclean: clean
 	@bash srcs/scripts/logs/kill-finder.sh 2>/dev/null || true
 
 	# Remove volumes and all images associated with this project
-	$(COMPOSE) $(PROFILES) down -v --rmi all --remove-orphans
+	$(COMPOSE) down -v --rmi all --remove-orphans
 
 	# Remove physical data directories created by 'dirs'
 	sudo rm -rf $(DATA_DIRS)
