@@ -46,7 +46,7 @@ class SalaryDataModule(L.LightningDataModule):
 			self.dataset_EDA = self.ct.fit_transform(self.dataset_EDA)
 		if stage == 'fit':
 			self.df = self.data if isinstance(self.data, pd.DataFrame) else pd.read_csv(self.data)
-			self.df = self.df[get_features()].copy()
+			# self.df = self.df[get_features()].copy()
 			self.init_pipeline()
 			self.fit_pipeline()
 		elif stage == 'test':
@@ -160,7 +160,7 @@ class SalaryDataModule(L.LightningDataModule):
 
 		Salary_min = 1000
 		# Salary_max = 999999
-		Salary_max = 100_000
+		Salary_max = 350_000
 
 		# Use float64 limit as a ceiling
 		FLOAT_MAX = np.finfo(np.float64).max
@@ -235,7 +235,7 @@ class SalaryDataModule(L.LightningDataModule):
 	######################################################################
 	
 	def init_pipeline(self):
-		self.cleaning_data()
+		# self.cleaning_data()
 		self.init_encoder() #Create Columns Transformers
 
 	######################################################################

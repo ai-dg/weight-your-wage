@@ -31,7 +31,7 @@ def GeneralTrainer():
 		experiment_name=EXPIREMENT_NAME
 	)
 
-	salary_data_module = SalaryDataModule("./srcs/model/datasets/survey_results_public.csv")
+	salary_data_module = SalaryDataModule("./srcs/model/datasets/survey_results_cleaned.csv")
 	salary_data_module.setup(stage="fit")
 	L.seed_everything(42, workers=True)
 	salary_model = SalaryModel(nb_features=salary_data_module.nb_features, lr=1e-5)
@@ -44,7 +44,7 @@ def GeneralTrainer():
 		devices=1,
 		precision="16-mixed",
 		deterministic=True,
-		max_epochs=10,
+		max_epochs=100,
 		logger=mlf_logger,
 		enable_progress_bar=False,
 		callbacks=callbacks

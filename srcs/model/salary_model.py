@@ -88,6 +88,8 @@ class SalaryModel(L.LightningModule):
 		return optimizer
 
 	def on_train_end(self):
+		if getattr(self, 'skip_validation_hook', False):
+			return
 		# Get val dataset
 		val_dataloader = self.trainer.datamodule.val_dataloader()
 		train_dataloader = self.trainer.datamodule.train_dataloader()
@@ -97,7 +99,7 @@ class SalaryModel(L.LightningModule):
 
 		#Density plot
 		X_val, y_true, y_hat = self.density_plot(val_dataloader, scaler, "val_density_comparison.html")
-		self.density_plot(train_dataloader, scaler, "train_density_comparison.html")
+		X_train, _, _ = self.density_plot(train_dataloader, scaler, "train_density_comparison.html")
 
 		#log rmse
 		self.log_rmse(y_true, y_hat)
@@ -109,8 +111,6 @@ class SalaryModel(L.LightningModule):
 		# )
 		# logger.info(f"Mean Label Quality: {np.mean(quality_scores)}")
 		
-		from cleanlab import Datalab
-
 		# 1. Organize data into a DataFrame or Dict
 		data = {"target": y_true.flatten()}
 		lab = Datalab(data, label_name="target", task='regression')
@@ -139,7 +139,7 @@ class SalaryModel(L.LightningModule):
 				all_y_true.append(y.cpu())
 				all_y_hat.append(y_hat.cpu())
 
-		X_val = torch.cat(all_X).numpy()
+		X = torch.cat(all_X).numpy()
 		# 2. Convert lists to single tensors
 		y_true_scaled = torch.cat(all_y_true).numpy().reshape(-1, 1)
 		y_hat_scaled = torch.cat(all_y_hat).numpy().reshape(-1, 1)
@@ -161,7 +161,7 @@ class SalaryModel(L.LightningModule):
 			figure=fig,
 			artifact_file=f"visual_analysis/{html_file_name}"
 		)
-		return [X_val, y_true, y_hat]
+		return [X, y_true, y_hat]
 
 	def log_rmse(self, y_true, y_hat):
 		rmse = np.sqrt(np.mean((y_true - y_hat)**2))
