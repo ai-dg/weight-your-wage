@@ -106,13 +106,6 @@ class SalaryModel(L.LightningModule):
 		self.log_rmse(y_true, y_hat)
 		self.log_mae(y_true, y_hat)
 		self.log_me(y_true, y_hat)
-
-		#check data / cleanlab
-		# quality_scores = get_label_quality_scores(
-		# 	labels=y_true.flatten(), 
-		# 	predictions=y_hat.flatten()
-		# )
-		# logger.info(f"Mean Label Quality: {np.mean(quality_scores)}")
 		
 		# 1. Organize data into a DataFrame or Dict
 		data = {"target": y_true.flatten()}
@@ -167,11 +160,6 @@ class SalaryModel(L.LightningModule):
 		return [X, y_true, y_hat]
 
 	def log_rmse(self, y_true, y_hat):
-		#Sorting y_true / y_hat
-		# index = np.argsort(y_true)
-		# y_true = y_true[index]
-		# y_hat = y_hat[index]
-
 		all_rmse = []
 		all_y = []
 		step = 1
@@ -199,6 +187,7 @@ class SalaryModel(L.LightningModule):
 		plt.title("RMSE as function of prediction")
 		plt.savefig("graph/RMSE.png")
 		plt.close()
+		#Log global rmse to mlflow
 		rmse = np.sqrt(np.mean((y_true - y_hat)**2))
 		logger.info(f"rmse : {rmse}")
 		content = {
