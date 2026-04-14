@@ -35,15 +35,20 @@ class SalaryDataModule(L.LightningDataModule):
 		self.fit_encoder_filename = "fit_encoder.joblib"
 		self.target_scaler_filename = "target_scaler.joblib"
 		self.artifact_path = artifact_path
+		self.df = None
 
 	def prepare_data(self):
 		pass
 
 	def setup(self, stage:str):
 		if stage == 'EDA':
-			self.init_pipeline()
-			self.dataset_EDA = self.df.copy()
-			self.dataset_EDA = self.ct.fit_transform(self.dataset_EDA)
+			self.df = self.data if isinstance(self.data, pd.DataFrame) else pd.read_csv(self.data)
+			self.df = self.df[get_features()].copy()
+			self.cleaning_data()
+			self.df.to_csv("./srcs/model/datasets/data_EDA.csv")
+			EDA = profile = ProfileReport(self.df, title="Data (Before Preprocessing)")
+			return profile.to_file("./srcs/model/EDA.html")
+
 		if stage == 'fit':
 			self.df = self.data if isinstance(self.data, pd.DataFrame) else pd.read_csv(self.data)
 			# self.df = self.df[get_features()].copy()

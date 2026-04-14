@@ -10,7 +10,6 @@ DATA_DIRS = .venv srcs/data/postgres srcs/data/postgres_mlflow srcs/data/minio s
 
 .PHONY: build up down downv logs stop start clean fclean dirs fix-perms
 
-
 build: dirs
 	if [ "$(NODE_ENV)" = "PROD" ]; then \
 		$(MAKE) dependencies-py; \
