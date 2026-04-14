@@ -4,9 +4,11 @@ from fastapi import Request
 from fastapi import HTTPException
 import pandas as pd
 from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse
 import uuid
 import datetime
-import logging
+from loguru import logger
+import json
 
 
 logger = logging.getLogger("app_api")
@@ -18,49 +20,55 @@ def main():
 	app.include_router(fastapi.APIRouter())
 	app.get("/")(lambda: {"message": "Hello World"})
 
-	def _run_test(job_id: str):
-		pass
+	def _run_test(job_id: str, version:str | None):
+		logger.info("[test] Starting testing...")
+		try:
+			from srcs.model.test import GeneralTester
+			GeneralTester(version=version)
+			jobs[job_id]["status"] = "done"
+			logger.info("[test] Testing completed.")
+		except Exception as e:
+			jobs[job_id]["status"] = "failed"
+			logger.error(f"[train] Error: {e}")
+			import traceback
+			traceback.print_exc()
 
 	def _run_training(job_id: str):
-		import sys
-		import logging
-		sys.stdout.reconfigure(line_buffering=True) if hasattr(sys.stdout, "reconfigure") else None
-		sys.stderr.reconfigure(line_buffering=True) if hasattr(sys.stderr, "reconfigure") else None
-		logging.basicConfig(level=logging.INFO, format="%(message)s", stream=sys.stdout, force=True)
-		for name in ("lightning", "pytorch_lightning", "model"):
-			logging.getLogger(name).setLevel(logging.INFO)
-			for h in logging.getLogger(name).handlers:
-				h.setStream(sys.stdout)
-		print("[train] Starting training...", flush=True)
+		logger.info("[train] Starting training...")
 		try:
 			from srcs.model.train import GeneralTrainer
 			GeneralTrainer()
 			jobs[job_id]["status"] = "done"
-			print("[train] Training completed.", flush=True)
+			logger.info("[train] Training completed.")
 		except Exception as e:
 			jobs[job_id]["status"] = "failed"
-			print(f"[train] Error: {e}", flush=True)
+			logger.error(f"[train] Error: {e}")
 			import traceback
 			traceback.print_exc()
-		finally:
-			sys.stdout.flush()
-			sys.stderr.flush()
 
-	def _run_inference(job_id: str):
-		import sys
-		sys.stdout.reconfigure(line_buffering=True) if hasattr(sys.stdout, "reconfigure") else None
-		sys.stderr.reconfigure(line_buffering=True) if hasattr(sys.stderr, "reconfigure") else None
+	def _run_inference(job_id: str, data: dict | None):
 		try:
 			from srcs.model.predict import GeneralInferencer
-			salary = GeneralInferencer(datasets_file("inference.csv"))
+			salary = GeneralInferencer(data)
 			jobs[job_id]["status"] = "done"
 			jobs[job_id]["salary"] = salary
-			print("[predict] Inference completed.", flush=True)
+			logger.info("[predict] Inference completed.")
 		except Exception as e:
 			jobs[job_id]["status"] = "failed"
-			print(f"[predict] Error: {e}", flush=True)
+			logger.error(f"[train] Error: {e}")
 			import traceback
 			traceback.print_exc()
+
+	@app.get("/jobs/eda")
+	def eda():
+		from srcs.model.data_preprocessor import SalaryDataModule
+		data_module = SalaryDataModule(data="./srcs/model/datasets/survey_results_public.csv")
+		data_module.setup("EDA")
+
+		return FileResponse(
+			path="./srcs/model/EDA.html",
+			filename="EDA.html"
+		)
 		finally:
 			sys.stdout.flush()
 			sys.stderr.flush()
@@ -186,15 +194,16 @@ def main():
 			"message": "Training is running in the background."
 		}
 
-	@app.post("/jobs/test")
-	def test(background_tasks: BackgroundTasks):
+	@app.post("/jobs/test/")
+	@app.post("/jobs/test/{version}")
+	def test(background_tasks: BackgroundTasks, version: str | None=None):
 		job_id = str(uuid.uuid4())
 		jobs[job_id] = {
-			"task": "train",
+			"task": "test",
 			"status": "pending",
 			"created_at": str(datetime.datetime.now())
 		}
-		background_tasks.add_task(_run_test, job_id=job_id)
+		background_tasks.add_task(_run_test, version=version,job_id=job_id)
 		return {
 			"status": "test started",
 			"job_id": job_id,
@@ -202,14 +211,25 @@ def main():
 		}
 
 	@app.post("/jobs/predict")
-	def predict(background_tasks: BackgroundTasks):
+	async def predict(background_tasks: BackgroundTasks, request: Request):
+		try:
+			data = await request.json()
+		except JSONDecodeError:
+			return JSONResponse(
+				status_code=400,
+				content={
+					"error": "Bad JSOn formnatting",
+					"status_code": 400
+				}
+			)
+
 		job_id = str(uuid.uuid4())
 		jobs[job_id] = {
 			"task": "predict",
 			"status": "pending",
 			"created_at": str(datetime.datetime.now())
 		}
-		background_tasks.add_task(_run_inference, job_id=job_id)
+		background_tasks.add_task(_run_inference, data=data, job_id=job_id)
 		return {
 			"status": "inference started",
 			"job_id": job_id,
@@ -304,27 +324,6 @@ def main():
 			)
 		return jobs[job_id]
 	
-
-	@app.post("/predict")
-	async def predict(request: Request):
-		"""POST JSON aligné sur le formulaire / modèle. Ne renvoie pas l’objet Request (non JSON-serializable)."""
-		body = None
-		try:
-			body = await request.json()
-		except Exception as exc:
-			print(f"[predict] corps JSON invalide ou vide: {exc}", flush=True)
-		else:
-			if isinstance(body, dict):
-				print(f"[predict] reçu {len(body)} champs: {list(body.keys())}", flush=True)
-			else:
-				print(f"[predict] reçu type={type(body).__name__}", flush=True)
-		df = pd.DataFrame([body])
-		df.to_csv(model_file("inference.csv"))
-		return {
-			"message": "prediction started",
-			"received": body,
-		}
-
 
 	return app
 

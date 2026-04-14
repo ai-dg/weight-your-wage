@@ -13,6 +13,7 @@ class SmartOrdinalEncoder(BaseEstimator, TransformerMixin):
     def fit(self, X, y=None):
         X = pd.DataFrame(X)
         
+        self.features_list = list(X.columns)
         for feature in X.columns:
             self.feature_metadata[feature] = {}
             percentage_nan = X[feature].isna().mean()
@@ -35,17 +36,23 @@ class SmartOrdinalEncoder(BaseEstimator, TransformerMixin):
             )
             encoder.fit([[v] for v in valid_answers])
             self.feature_metadata[feature]['encoder'] = encoder
+
         return self
 
     def transform(self, X):
         X = pd.DataFrame(X).copy()
         all_encoded_results = []
         
-        for feature, meta in self.feature_metadata.items():
+        for feature in self.features_list:
+            meta = self.feature_metadata[feature]
             col_data  = X[feature].fillna(meta['fill_value']).values.reshape(-1,1)
             encoded_col = meta['encoder'].transform(col_data)
             all_encoded_results.append(encoded_col)
         return np.hstack(all_encoded_results)
+
+    def get_feature_names_out(self, input_features=None):
+        return np.array(self.features_list)
+
 
 class SmartOneHotEncoder(BaseEstimator, TransformerMixin):
     def __init__(self, threshold=0.2):
@@ -55,6 +62,7 @@ class SmartOneHotEncoder(BaseEstimator, TransformerMixin):
     def fit(self, X, y=None):
         X = pd.DataFrame(X)
 
+        self.features_list = list(X.columns)
         for feature in X.columns:
             self.feature_metadata[feature] = {}
             valid_answers = get_features_answers(feature)
@@ -85,11 +93,20 @@ class SmartOneHotEncoder(BaseEstimator, TransformerMixin):
         X = pd.DataFrame(X).copy()
         all_encoded_results = []
 
-        for feature, meta in self.feature_metadata.items():
+        for feature in self.features_list:
+            meta = self.feature_metadata[feature]
             col_data = X[feature].fillna(meta['fill_value']).values.reshape(-1, 1)
             encoded_col = meta['encoder'].transform(col_data)
             all_encoded_results.append(encoded_col)
         return np.hstack(all_encoded_results)
+
+    def get_feature_names_out(self, input_features=None):
+        feature_names = []
+        for feature in self.features_list:
+            meta = self.feature_metadata[feature]
+            names = [f"{feature}_{cat}" for cat in meta['categories']]
+            feature_names.extend(names)
+        return np.array(feature_names)
 
 class SmartMultilabelEncoder(BaseEstimator, TransformerMixin):
     def __init__(self, threshold=0.2):
@@ -99,6 +116,7 @@ class SmartMultilabelEncoder(BaseEstimator, TransformerMixin):
     def fit(self, X, y=None):
         X = pd.DataFrame(X)
 
+        self.features_list = list(X.columns)
         for feature in X.columns:
             self.feature_metadata[feature] = {}
             valid_answers = get_features_answers(feature)
@@ -123,7 +141,8 @@ class SmartMultilabelEncoder(BaseEstimator, TransformerMixin):
         X = pd.DataFrame(X).copy()
         all_encoded_results = []
         
-        for feature, meta in self.feature_metadata.items():
+        for feature in self.features_list:
+            meta = self.feature_metadata[feature]
             valid_answers = meta['valid_answers']
             column_data = X[feature].fillna("").astype(str)
             list_data = [[item.strip() for item in val.split(';') if item.strip()] 
@@ -147,4 +166,12 @@ class SmartMultilabelEncoder(BaseEstimator, TransformerMixin):
         #     X = pd.concat([X, encoded_df], axis=1)
         #     X.drop(columns=[feature], inplace=True)
         # return X
+
+    def get_feature_names_out(self, input_features=None):
+        feature_names = []
+        for feature in self.features_list:
+            meta = self.feature_metadata[feature]
+            names = [f"{feature}_{cls}" for cls in meta['valid_answers']]
+            feature_names.extend(names)
+        return np.array(feature_names)
 

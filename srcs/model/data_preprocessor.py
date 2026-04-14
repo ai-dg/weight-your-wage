@@ -17,6 +17,8 @@ from sklearn.pipeline import Pipeline
 from srcs.model.scikit_encoder import SmartOrdinalEncoder, SmartMultilabelEncoder, SmartOneHotEncoder
 from srcs.model.features_answer import get_features, get_features_answers
 
+import os
+from loguru import logger
 # from model.preprocessor_base import BasePreprocessor
 # from model.scikit_encoder import SmartOrdinalEncoder, SmartMultilabelEncoder, SmartOneHotEncoder
 # from model.features_answer import get_features, get_features_answers
@@ -25,48 +27,48 @@ from srcs.model.features_answer import get_features, get_features_answers
 
 class SalaryDataModule(L.LightningDataModule):
 
-	def __init__(self, path):
+	def __init__(self, data=None, artifact_path=None):
 		super().__init__()
-		self.path = path
+		self.data = data
 		self.batch_size = 32
 		self.nb_features = 0
 		self.fit_encoder_filename = "fit_encoder.joblib"
 		self.target_scaler_filename = "target_scaler.joblib"
-		# try :
-		# 	self.df = pd.read_csv(path)
-		# 	self.features = get_features()
-		# 	self.df = self.df[self.features].copy()
-		# 	self.preprocess_state = {}
-		# except Exception as e :
-		# 	print(f"Error : {e}")
-		# 	raise RuntimeError(f"Error : {e}")
+		self.artifact_path = artifact_path
+		self.df = None
 
 	def prepare_data(self):
 		pass
 
 	def setup(self, stage:str):
-		# if stage != predict
-		# 	self.init_pipeline()
 		if stage == 'EDA':
-			self.init_pipeline()
-			self.dataset_EDA = self.df.copy()
-			self.dataset_EDA = self.ct.fit_transform(self.dataset_EDA)
+			self.df = self.data if isinstance(self.data, pd.DataFrame) else pd.read_csv(self.data)
+			self.df = self.df[get_features()].copy()
+			self.cleaning_data()
+			self.df.to_csv("./srcs/model/datasets/data_EDA.csv")
+			EDA = profile = ProfileReport(self.df, title="Data (Before Preprocessing)")
+			return profile.to_file("./srcs/model/EDA.html")
+
 		if stage == 'fit':
-			self.df = pd.read_csv(self.path)
+			self.df = self.data if isinstance(self.data, pd.DataFrame) else pd.read_csv(self.data)
 			self.df = self.df[get_features()].copy()
 			self.init_pipeline()
 			self.fit_pipeline()
 		elif stage == 'test':
 			self.X_test = pd.read_csv("./srcs/model/datasets/X_test.csv")
 			self.y_test = pd.read_csv("./srcs/model/datasets/y_test.csv")
-			self.ct = joblib.load(self.fit_encoder_filename)
-			self.scaler_y = joblib.load(self.target_scaler_filename)
+			self.ct = joblib.load(os.path.join(self.artifact_path, self.fit_encoder_filename))
+			self.scaler_y = joblib.load(os.path.join(self.artifact_path, self.target_scaler_filename))
 
 			self.X_test_scaled = self.ct.transform(self.X_test)
 			self.y_test_log = np.log1p(self.y_test)
+			logger.info(f"y_test : {self.y_test_log.shape}")
+			# self.y_test_log = self.y_test_log[:,1]
 			self.y_test_scaled = self.scaler_y.transform(self.y_test_log)
 		elif stage == 'predict':
-			self.df_predict = pd.read_csv(self.path)
+			logger.info("data: ", self.data)
+			self.df_predict = pd.DataFrame([self.data])
+			logger.info("predict_df: ", self.df_predict)
 			self.ct = joblib.load(self.fit_encoder_filename)
 			self.scaler_y = joblib.load(self.target_scaler_filename) #Maybe not needed here
 			self.X_predict_scaled = self.ct.transform(self.df_predict)
@@ -130,6 +132,10 @@ class SalaryDataModule(L.LightningDataModule):
 		
 		need_target_encoding = ["Country"]
 
+		binary_pipeline = Pipeline([
+			('imputer', SimpleImputer(strategy='constant', fill_value='No')),
+			('encoder', OneHotEncoder(drop='first', sparse_output=False, handle_unknown='error', dtype=int))
+		])
 		num_pipeline = Pipeline([
 			('imputer', SimpleImputer(strategy='median')),
 			('scaler', StandardScaler())
@@ -142,12 +148,13 @@ class SalaryDataModule(L.LightningDataModule):
 
 		self.ct = ColumnTransformer(transformers=[
 			('numerical', num_pipeline, need_numerical_encoding),
-			('binary', target_pipeline, need_binary_encoding),
+			('binary', binary_pipeline, need_binary_encoding),
 			('ordinal', SmartOrdinalEncoder(), need_ordinal_encoding),
 			('one_hot', SmartOneHotEncoder(), need_hot_encoding),
 			('multi_label', SmartMultilabelEncoder(), need_multi_label_encoding),
-			('target', TargetEncoder(smoothing=10.0), need_target_encoding),
+			('target', target_pipeline, need_target_encoding),
 		])
+
 	
 	def update_currency(self):
 		"""
@@ -157,7 +164,8 @@ class SalaryDataModule(L.LightningDataModule):
 		"""
 
 		Salary_min = 1000
-		Salary_max = 999999
+		# Salary_max = 999999
+		Salary_max = 250_000
 
 		# Use float64 limit as a ceiling
 		FLOAT_MAX = np.finfo(np.float64).max
@@ -191,8 +199,8 @@ class SalaryDataModule(L.LightningDataModule):
 
 		self.X_test = X_test
 		self.y_test = y_test.to_frame()
-		X_test.to_csv("./srcs/model/datasets/X_test.csv")
-		y_test.to_csv("./srcs/model/datasets/y_test.csv")
+		X_test.to_csv("./srcs/model/datasets/X_test.csv", index=False)
+		y_test.to_csv("./srcs/model/datasets/y_test.csv", index=False)
 
 		X_train, X_val, y_train, y_val = train_test_split(X_split, y_split, random_state=seed, test_size=ratio_val, shuffle=True)
 
@@ -212,16 +220,6 @@ class SalaryDataModule(L.LightningDataModule):
 	def drop_features(self, features:list[str]):
 		self.df.drop(columns=features, inplace=True)
 
-	def replace_nan_median(self, feature: str):
-		median = self.df[feature].median()
-		self.df[feature] = self.df[feature].fillna(median)
-		return median
-
-	def replace_nan_frequent(self, feature: str):
-		most_frequent = self.df[feature].mode()[0]
-		self.df[feature] = self.df[feature].fillna(most_frequent)
-		return most_frequent
-
 
 	def extract_target(self):
 		"""
@@ -236,27 +234,6 @@ class SalaryDataModule(L.LightningDataModule):
 		y = self.df.loc[:,"CompTotalEuro"]
 		X = self.df.drop("CompTotalEuro", axis=1)
 		return X, y
-
-	# def load_data_to_torch(self):
-
-	# 	X_tensor_train = tensor(self.X_train_scaled, dtype=float32)
-	# 	X_tensor_val = tensor(self.X_val_scaled, dtype=float32)
-	# 	X_tensor_test = tensor(self.X_test_scaled, dtype=float32)
-
-	# 	y_tensor_train = tensor(self.y_train_scaled, dtype=float32)
-	# 	y_tensor_val = tensor(self.y_val_scaled, dtype=float32)
-	# 	y_tensor_test = tensor(self.y_test_scaled, dtype=float32)
-
-	# 	tensor_dataset_train = TensorDataset(X_tensor_train, y_tensor_train)
-	# 	tensor_dataset_val = TensorDataset(X_tensor_val, y_tensor_val)
-	# 	tensor_dataset_test = TensorDataset(X_tensor_test, y_tensor_test)
-
-	# 	Train_loader = DataLoader(tensor_dataset_train, batch_size=32, shuffle=True)
-	# 	Val_loader = DataLoader(tensor_dataset_val, batch_size=32)
-	# 	Test_loader = DataLoader(tensor_dataset_test, batch_size=32)
-
-
-	# 	return Train_loader, Val_loader, Test_loader
 
 	######################################################################
 	##### 					INIT PIPELINE							 #####
@@ -277,6 +254,12 @@ class SalaryDataModule(L.LightningDataModule):
 
 		#Transform + Scaling (on X and on y) (normalize)
 		self.X_train_scaled = self.ct.fit_transform(self.X_train, self.y_train)
+
+		feature_names = self.ct.get_feature_names_out()
+		# print(f"Input Features: {len(self.X_train.columns)}")
+		# print(f"Output Features (after encoding): {len(feature_names)}")
+		# print(f"All Output Features: {feature_names}")
+
 		self.X_val_scaled = self.ct.transform(self.X_val)
 
 		self.nb_features = self.X_train_scaled.shape[1]
@@ -290,6 +273,7 @@ class SalaryDataModule(L.LightningDataModule):
 		self.y_val_log = np.log1p(self.y_val)
 		self.y_val_scaled = self.scaler_y.transform(self.y_val_log)
 		#End
+		logger.info(f"y_train : {self.y_train_log.shape}")
 
 		joblib.dump(self.ct, self.fit_encoder_filename)
 		joblib.dump(self.scaler_y, self.target_scaler_filename)

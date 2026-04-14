@@ -3,6 +3,23 @@ import lightning as L
 import torch.nn.functional as F
 from torchmetrics.regression import R2Score
 
+import torch
+import numpy as np
+import random
+import mlflow
+import json
+from loguru import logger
+
+seed = 42
+random.seed(seed)
+np.random.seed(seed)
+# torch.manual_seed(seed)
+
+# torch.backends.cudnn.deterministic = True
+# torch.backends.cudnn.benchmark = False
+
+# torch.use_deterministic_algorithms(True)
+L.seed_everything(42, workers=True)
 
 class SalaryModel(L.LightningModule):
 
@@ -65,5 +82,64 @@ class SalaryModel(L.LightningModule):
 	def configure_optimizers(self):
 		optimizer = optim.Adam(self.parameters(), lr=self.lr, weight_decay=1e-4)
 		return optimizer
+
+	def on_train_end(self):
+		# Get val dataset
+		val_loader = self.trainer.datamodule.val_dataloader()
+		scaler = self.trainer.datamodule.scaler_y
+		#Eval mode (To stop training)
+		self.eval()
+
+		all_y_true = []
+		all_y_hat = []
+		with torch.no_grad():
+			for batch in val_loader:
+				x, y = batch
+				#Precise where to do the calculation
+				y_hat = self(x.to(self.device))
+
+				#Move data to cpu
+				all_y_true.append(y.cpu())
+				all_y_hat.append(y_hat.cpu())
+
+		# 2. Convert lists to single tensors
+		y_true_scaled = torch.cat(all_y_true).numpy().reshape(-1, 1)
+		y_hat_scaled = torch.cat(all_y_hat).numpy().reshape(-1, 1)
+		
+		y_true_log = scaler.inverse_transform(y_true_scaled)
+		y_hat_log = scaler.inverse_transform(y_hat_scaled)
+		
+		y_true = np.expm1(y_true_log)
+		y_hat = np.expm1(y_hat_log)
+
+		import plotly.figure_factory as ff
+		fig = ff.create_distplot(
+			[y_true.flatten(), y_hat.flatten()],
+			["y_true", "y_hat"],
+			show_hist=False)
+		
+		fig.update_layout(title_text='Superposed Density Comparison')
+		self.logger.experiment.log_figure(
+			run_id=self.logger.run_id,
+			figure=fig,
+			artifact_file="visual_analysis/density_comparison.html"
+		)
+
+		logger.info(f"y_true : {y_true}")
+		logger.info(f"y_hat : {y_hat}")
+		# logger.info(f"y_true - y_hat : {}")
+		rmse = np.sqrt(np.mean((y_true - y_hat)**2))
+		logger.info(f"rmse : {rmse}")
+		content = {
+			"rmse" : str(rmse)
+		}
+		with open("rmse.json", 'w') as f:
+			json.dump(content, f)
+
+		self.logger.experiment.log_artifact(
+			run_id=self.logger.run_id,
+			local_path="rmse.json",
+			artifact_path="rmse"
+		)
 
 # model = SalaryModel(nb_features=182)
