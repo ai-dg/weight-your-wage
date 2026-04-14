@@ -1,13 +1,15 @@
 import fastapi
 from fastapi import FastAPI, BackgroundTasks
 from fastapi import Request
+from fastapi import HTTPException
 import pandas as pd
-from model.paths import datasets_file, model_file
 from fastapi.responses import JSONResponse
 import uuid
 import datetime
+import logging
 
 
+logger = logging.getLogger("app_api")
 jobs = {}
 
 
@@ -62,7 +64,112 @@ def main():
 		finally:
 			sys.stdout.flush()
 			sys.stderr.flush()
-		
+
+	def _run_upload_minio_task(job_id: str):
+		import sys
+		sys.stdout.reconfigure(line_buffering=True) if hasattr(sys.stdout, "reconfigure") else None
+		sys.stderr.reconfigure(line_buffering=True) if hasattr(sys.stderr, "reconfigure") else None
+		try:
+			from srcs.services.minio.minio_file_uploader import run_csv_import_minio
+			run_csv_import_minio()
+			jobs[job_id]["status"] = "done"
+			print("[upload minio file] Importation completed.", flush=True)
+		except HTTPException as e:
+			jobs[job_id]["status"] = "failed"
+			jobs[job_id]["error"] = e.detail
+			logger.error(f"Job {job_id} failed with HTTP error: {e.detail}")
+		except Exception as e:
+			jobs[job_id]["status"] = "failed"
+			print(f"[upload minio file] Error: {e}", flush=True)
+			logger.exception(f"Critical failure in background job {job_id}")
+		finally:
+			sys.stdout.flush()
+			sys.stderr.flush()
+
+	def _run_import_minio_postgresql_task(job_id: str):
+		import sys
+		sys.stdout.reconfigure(line_buffering=True) if hasattr(sys.stdout, "reconfigure") else None
+		sys.stderr.reconfigure(line_buffering=True) if hasattr(sys.stderr, "reconfigure") else None
+		try:
+			from srcs.services.postgresql.main_import import run_minio_import_postgresql
+			run_minio_import_postgresql()
+			jobs[job_id]["status"] = "done"
+			print("[import postgresql] Importation completed.", flush=True)
+		except HTTPException as e:
+			jobs[job_id]["status"] = "failed"
+			jobs[job_id]["error"] = e.detail
+			logger.error(f"Job {job_id} failed with HTTP error: {e.detail}")
+		except Exception as e:
+			jobs[job_id]["status"] = "failed"
+			print(f"[import postgresql] Error: {e}", flush=True)
+			logger.exception(f"Critical failure in background job {job_id}")
+		finally:
+			sys.stdout.flush()
+			sys.stderr.flush()
+
+	def _run_clean_data_task(job_id: str):
+		import sys
+		sys.stdout.reconfigure(line_buffering=True) if hasattr(sys.stdout, "reconfigure") else None
+		sys.stderr.reconfigure(line_uffering=True) if hasattr(sys.stderr, "reconfigure") else None
+		try:
+			from srcs.services.postgresql.clean_data import run_clean_data
+			run_clean_data()
+			jobs[job_id]["status"] = "done"
+			print("[clean data] Data cleaned.", flush=True)
+		except HTTPException as e:
+			jobs[job_id]["status"] = "failed"
+			jobs[job_id]["error"] = e.detail
+			logger.error(f"Job {job_id} failed with HTTP error: {e.detail}")
+		except Exception as e:
+			jobs[job_id]["status"] = "failed"
+			print(f"[clean data] Error: {e}", flush=True)
+			logger.exception(f"Critical failure in background job {job_id}")
+		finally:
+			sys.stdout.flush()
+			sys.stderr.flush()
+
+	def _run_setup_metabase_task(job_id: str):
+		import sys
+		sys.stdout.reconfigure(line_buffering=True) if hasattr(sys.stdout, "reconfigure") else None
+		sys.stderr.reconfigure(line_buffering=True) if hasattr(sys.stderr, "reconfigure") else None
+		try:
+			from srcs.services.metabase.setup_metabase import run_setup_metabase
+			run_setup_metabase()
+			jobs[job_id]["status"] = "done"
+			print("[setup metabase] Metabase set up.", flush=True)
+		except HTTPException as e:
+			jobs[job_id]["status"] = "failed"
+			jobs[job_id]["error"] = e.detail
+			logger.error(f"Job {job_id} failed with HTTP error: {e.detail}")
+		except Exception as e:
+			jobs[job_id]["status"] = "failed"
+			print(f"[setup metabase] Error: {e}", flush=True)
+			logger.exception(f"Critical failure in background job {job_id}")
+		finally:
+			sys.stdout.flush()
+			sys.stderr.flush()
+
+	def _run_data_visualization_metabase_task(job_id: str):
+		import sys
+		sys.stdout.reconfigure(line_buffering=True) if hasattr(sys.stdout, "reconfigure") else None
+		sys.stderr.reconfigure(line_buffering=True) if hasattr(sys.stderr, "reconfigure") else None
+		try:
+			from srcs.services.metabase.data_visualization_metabase import run_data_visualization_metabase
+			run_data_visualization_metabase()
+			jobs[job_id]["status"] = "done"
+			print("[data visualization metabase] Metabase set up.", flush=True)
+		except HTTPException as e:
+			jobs[job_id]["status"] = "failed"
+			jobs[job_id]["error"] = e.detail
+			logger.error(f"Job {job_id} failed with HTTP error: {e.detail}")
+		except Exception as e:
+			jobs[job_id]["status"] = "failed"
+			print(f"[data visualization metabase] Error: {e}", flush=True)
+			logger.exception(f"Critical failure in background job {job_id}")
+		finally:
+			sys.stdout.flush()
+			sys.stderr.flush()
+
 
 	@app.post("/jobs/train")
 	def train(background_tasks: BackgroundTasks):
@@ -107,6 +214,81 @@ def main():
 			"status": "inference started",
 			"job_id": job_id,
 			"message": "Inference is running in the background."
+		}
+
+	@app.post("/jobs/upload_minio")
+	def upload_minio(background_tasks: BackgroundTasks):
+		job_id = str(uuid.uuid4())
+		jobs[job_id] = {
+			"task": "upload minio",
+			"status": "pending",
+			"created_at": str(datetime.datetime.now())
+		}
+		background_tasks.add_task(_run_upload_minio_task, job_id=job_id)
+		return {
+			"status": "uploading started",
+			"job_id": job_id,
+			"message": "Uploading is running in the background."
+		}
+
+	@app.post("/jobs/import_postgresql")
+	def import_postgresql(background_tasks: BackgroundTasks):
+		job_id = str(uuid.uuid4())
+		jobs[job_id] = {
+			"task": "import posgresql",
+			"status": "pending",
+			"created_at": str(datetime.datetime.now())
+		}
+		background_tasks.add_task(_run_import_minio_postgresql_task, job_id=job_id)
+		return {
+			"status": "importation started",
+			"job_id": job_id,
+			"message": "Importation is running in the background."
+		}
+
+	@app.post("/jobs/clean_data")
+	def clean_data(background_tasks: BackgroundTasks):
+		job_id = str(uuid.uuid4())
+		jobs[job_id] = {
+			"task": "clean_data",
+			"status": "pending",
+			"created_at": str(datetime.datetime.now())
+		}
+		background_tasks.add_task(_run_clean_data_task, job_id=job_id)
+		return {
+			"status": "uploading started",
+			"job_id": job_id,
+			"message": "Cleaning data is running in the background."
+		}
+
+	@app.post("/jobs/setup_metabase")
+	def setup_metabase(background_tasks: BackgroundTasks):
+		job_id = str(uuid.uuid4())
+		jobs[job_id] = {
+			"task": "setup metabase",
+			"status": "pending",
+			"created_at": str(datetime.datetime.now())
+		}
+		background_tasks.add_task(_run_setup_metabase_task, job_id=job_id)
+		return {
+			"status": "setup started",
+			"job_id": job_id,
+			"message": "Setup is running in the background."
+		}
+
+	@app.post("/jobs/data_visualization")
+	def data_visualization(background_tasks: BackgroundTasks):
+		job_id = str(uuid.uuid4())
+		jobs[job_id] = {
+			"task": "data visualization",
+			"status": "pending",
+			"created_at": str(datetime.datetime.now())
+		}
+		background_tasks.add_task(_run_data_visualization_metabase_task, job_id=job_id)
+		return {
+			"status": "daata visualization started",
+			"job_id": job_id,
+			"message": "Data visualization is running in the background."
 		}
 
 	@app.get("/jobs/{job_id}")

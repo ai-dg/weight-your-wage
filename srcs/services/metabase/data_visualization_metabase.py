@@ -1,0 +1,446 @@
+from dotenv import load_dotenv
+import os
+import requests
+from fastapi import HTTPException, status
+import traceback
+import logging
+
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger("metabase_creater")
+
+
+def get_metabase_client():
+    load_dotenv()
+    username = os.getenv("METABASE_ADMIN_EMAIL")
+    password = os.getenv("METABASE_ADMIN_PASSWORD")
+    metabase_url = os.getenv("METABASE_URL")
+        
+    if not all([username, password, metabase_url]):
+        msg = "Missing environment variables: METABASE_ADMIN_EMAIL, METABASE_ADMIN_PASSWORD, or METABASE_URL."
+        logger.critical(msg)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "error": "ConfigError",
+                "message": msg
+                }
+        )
+
+    try:
+        session_id = get_session_token(username, password, metabase_url)
+        return session_id, metabase_url
+    except Exception as e:
+        logger.error(f"Failed to initialize Metabase client: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "error": type(e).__name__,
+                "message": str(e),
+                "context": "Metabase Client Initialization"
+            }
+        )
+
+def get_session_token(username, password, metabase_url):
+    payload = {"username": username, "password": password}
+    try:
+        response = requests.post(f"{metabase_url}/session", json=payload)
+        response.raise_for_status()
+        return response.json()["id"]
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Metabase Auth Failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={
+                "error": "MetabaseAuthError",
+                "message": "Unable to connect to Metabase or incorrect credentials.",
+                "details": str(e)
+            }
+        )
+
+def get_database_id(headers, metabase_url,db_name="PostgreSQL"):
+    try:
+        response = requests.get(f"{metabase_url}/database", headers=headers)
+        response.raise_for_status()
+        databases = response.json()
+
+        db_list = databases['data'] if isinstance(databases, dict) and 'data' in databases else databases
+        
+        for db in db_list:
+            if db['name'] == db_name:
+                return db['id']
+    
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "error": "MetabaseDbNotFound",
+                "message": f"Base '{db_name}' not found in Metabase."
+            }
+        )
+    except requests.exceptions.RequestException as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={
+                "error": "MetabaseCommunicationError",
+                "step": "get_database_id",
+                "details": str(e)
+            }
+        )
+
+def delete_old_cards(headers, metabase_url, visualizations):
+    try:
+        response = requests.get(f"{metabase_url}/card", headers=headers)
+        response.raise_for_status()
+        existing_cards = response.json()
+
+        names_to_create = [v["name"] for v in visualizations]
+
+        for card in existing_cards:
+            if card["name"] in names_to_create:
+                card_id = card["id"]
+                archive_res = requests.put(
+                    f"{metabase_url}/card/{card_id}",
+                    headers=headers, 
+                    json={"archived": True},
+                    timeout=10
+                )
+                archive_res.raise_for_status()
+                logger.info(f"Old version '{card['name']}' archived.")
+
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error while cleaning up old cards: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={
+                "error": "MetabaseCleanupError",
+                "details": str(e)}
+        )
+
+
+def create_cards(db_id, metabase_url, headers, visualizations):
+    results = []
+    try:
+        for viz in visualizations:
+            payload = {
+                "name": viz["name"],
+                "display": viz["display"],
+                "visualization_settings": viz["visualization_settings"],
+                "dataset_query": {
+                    "database": db_id,
+                    "type": "native",
+                    "native": {"query": viz["sql"]}
+                }
+            }
+            response = requests.post(
+                f"{metabase_url}/card",
+                headers=headers,
+                json=payload
+            )
+            response.raise_for_status()
+            results.append(viz["name"])
+            logger.info(f"Card '{viz['name']}' created.")
+
+        return {"status": "success", "created_cards": results}
+    
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Metabase Card Creation Failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={
+                "error": "MetabaseCardCreationError",
+                "details": str(e)
+            }
+        )
+
+def get_card_mapping(session_id, metabase_url):
+    headers = {"X-Metabase-Session": session_id}
+    
+    try:
+        response = requests.get(f"{metabase_url}/card", headers=headers)
+        response.raise_for_status()
+        cards = response.json()
+        
+        mapping = {card['name']: card['id'] for card in cards}
+
+        return mapping
+
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error retrieving cards: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={
+                "error": "MetabaseCardRecoveryError",
+                "details": str(e)
+            }
+        )
+
+def get_dashboard_id(session_id, name, metabase_url):
+    headers = {"X-Metabase-Session": session_id}
+    
+    try:
+        res = requests.get(f"{metabase_url}/search?q={name}&models=dashboard", headers=headers)
+        res.raise_for_status()
+        results = res.json()
+    
+        for dashboard in results['data']:
+            if dashboard['name'] == name:
+                return dashboard['id']
+        return None
+    
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Metabase Dashboard Identification Failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={
+                "error": "MetabaseDashboardIdentificationError",
+                "details": str(e)
+            }
+        )
+
+
+def create_dashboard(session_id, headers, metabase_url):
+    payload = [
+        {
+            "name": "Work Env",
+            "description": "...11",
+        },
+        {
+            "name": "Some Information",
+            "description": "...22",
+        }
+    ]
+
+    dashboard_name = ["Work Env", "Some Information"]
+
+    try:
+        for pay in payload:
+            for key, val in pay.items():
+                if key == "name":
+                    dash_id = get_dashboard_id(session_id, val, metabase_url)
+            if dash_id:
+                logger.info(f"Dashboard {val} already exist (ID: P{dash_id})")
+            else:
+                response = requests.post(
+                    f"{metabase_url}/dashboard",
+                    headers=headers,
+                    json=pay
+                )
+                response.raise_for_status()
+    
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Metabase Dashboard Creation Failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={
+                "error": "MetabaseDashboardCreationError",
+                "details": str(e)
+            }
+        )
+
+    mapping = get_card_mapping(session_id, metabase_url)
+    dash_id = []
+
+    for name in dashboard_name:
+        dash_id.append(get_dashboard_id(session_id, name, metabase_url))
+    
+    payload = [ 
+        {
+            "cards": [
+                {
+                    "id": -1,
+                    "card_id": mapping.get("Database Used Repartition"),
+                    "size_x": 12,
+                    "size_y": 8,
+                    "row": 0,
+                    "col": 0,
+                },
+                {
+                    "id": -2,
+                    "card_id": mapping.get("Dev Environnement Used Repartition"),
+                    "size_x": 12,
+                    "size_y": 8,
+                    "row": 0,
+                    "col": 12,
+                },
+                {
+                    "id": -3,
+                    "card_id": mapping.get("Language Used Repartition"),
+                    "size_x": 12,
+                    "size_y": 8,
+                    "row": 8,
+                    "col": 0,
+                },
+                {
+                    "id": -4,
+                    "card_id": mapping.get("Learned Code Repartition"),
+                    "size_x": 12,
+                    "size_y": 8,
+                    "row": 8,
+                    "col": 12,
+                },
+                {
+                    "id": -5,
+                    "card_id": mapping.get("Platform Used Repartition"),
+                    "size_x": 12,
+                    "size_y": 8,
+                    "row": 16,
+                    "col": 0,
+                },
+                {
+                    "id": -6,
+                    "card_id": mapping.get("Webframe Used Repartition"),
+                    "size_x": 12,
+                    "size_y": 8,
+                    "row": 16,
+                    "col": 12,
+                }
+            ]
+        },
+        {
+            "cards": [
+                {
+                    "id": -1,
+                    "card_id": mapping.get("Mean salary by Country"),
+                    "size_x": 24,
+                    "size_y": 8,
+                    "row": 0,
+                    "col": 0,
+                },
+                {
+                    "id": -2,
+                    "card_id": mapping.get("Devs Repartition by Country"),
+                    "size_x": 24,
+                    "size_y": 8,
+                    "row": 8,
+                    "col": 0,
+                },
+                {
+                    "id": -3,
+                    "card_id": mapping.get("Salary Evolution by Years Code"),
+                    "size_x": 24,
+                    "size_y": 8,
+                    "row": 16,
+                    "col": 0,
+                }
+            ]
+        }
+    ]
+
+    try:
+        for pay, id in zip(payload, dash_id):
+            response = requests.put(
+                f"{metabase_url}/dashboard/{id}/cards",
+                headers=headers,
+                json=pay
+            )
+            response.raise_for_status()
+
+    except requests.exceptions.RequestException as e:
+            logger.error(f"Metabase Dashboard Graph Creation Failed: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail={
+                    "error": "MetabaseDashboardGraphCreationError",
+                    "details": str(e)
+                }
+            )
+
+
+
+def run_data_visualization_metabase():
+    session_id, metabase_url = get_metabase_client()
+    
+    headers = {
+        "Content-Type": "application/json",
+        "X-Metabase-Session": session_id
+    }
+
+    visualizations = [
+        {
+            "name": "Mean salary by Country",
+            "sql": 'SELECT CASE WHEN "Country" = \'United States of America\' THEN \'United States\' WHEN "Country" = \'United Kingdom of Great Britain and Northern Ireland\' THEN \'United Kingdom\' ELSE "Country" END AS "Country", AVG("CompTotalEuro") AS "Mean Salary" FROM fact_survey WHERE "CompTotalEuro" < 499999 GROUP BY 1 HAVING COUNT(*) > 10 ORDER BY "Mean Salary" DESC',
+            "display": "map",
+            "visualization_settings": {
+                "map.type": "region",
+                'map.region': "world_countries",
+                "map.dimension": "Country",
+                "map.metric": "Mean Salary"
+            }
+        },
+        {
+            "name": "Devs Repartition by Country",
+            "sql": 'SELECT CASE WHEN "Country" = \'United States of America\' THEN \'United States\' WHEN "Country" = \'United Kingdom of Great Britain and Northern Ireland\' THEN \'United Kingdom\' ELSE "Country" END AS "Country", COUNT(*) FROM fact_survey GROUP BY 1 HAVING COUNT(*) > 10 ORDER BY 2 DESC',
+            "display": "map",
+            "visualization_settings": {
+                "map.type": "region",
+                'map.region': "world_countries",
+                "map.dimension": "Country",
+                "map.metric": "Mean Salary"
+            }
+        },
+        {
+            "name": "Salary Evolution by Years Code",
+            "sql": 'SELECT FLOOR("YearsCode" / 5) * 5 AS "Coding Experince", AVG("CompTotalEuro") AS "Mean Salary" FROM fact_survey WHERE "YearsCode" <= 50 GROUP BY 1 ORDER BY 1;',
+            "display": "line",
+            "visualization_settings": {
+                "graph.dimensions": ["Coding Experince"],  
+                "graph.metrics": ["Mean Salary"],        
+                "graph.show_values": True,
+                "line.interpolate": "monotone",
+                "line.marker_enabled": True,
+                "graph.x_axis.title_text": "Années d'expérience",
+                "graph.y_axis.title_text": "Salaire Moyen (€)"
+            }
+        },
+        {
+            "name": "Database Used Repartition",
+            "sql": 'SELECT "DatabaseHaveWorkedWith", COUNT(*) FROM analytics_database WHERE "DatabaseHaveWorkedWith" != \'NA\' GROUP BY 1 HAVING COUNT(*) > 10',
+            "display": "pie",
+            "visualization_settings": {}
+        },
+        {
+            "name": "Dev Environnement Used Repartition",
+            "sql": 'SELECT "DevEnvsHaveWorkedWith", COUNT(*) FROM analytics_devenvs WHERE "DevEnvsHaveWorkedWith" != \'NA\' GROUP BY 1 HAVING COUNT(*) > 10',
+            "display": "pie",
+            "visualization_settings": {}
+        },
+        {
+            "name": "Language Used Repartition",
+            "sql": 'SELECT "LanguageHaveWorkedWith", COUNT(*) FROM analytics_language WHERE "LanguageHaveWorkedWith" != \'NA\' GROUP BY 1 HAVING COUNT(*) > 10',
+            "display": "pie",
+            "visualization_settings": {}
+        },
+        {
+            "name": "Learned Code Repartition",
+            "sql": 'SELECT "LearnCode", COUNT(*) FROM analytics_learncode WHERE "LearnCode" != \'NA\' GROUP BY 1',
+            "display": "pie",
+            "visualization_settings": {}
+        },
+        {
+            "name": "Platform Used Repartition",
+            "sql": 'SELECT "PlatformHaveWorkedWith", COUNT(*) FROM analytics_platform WHERE "PlatformHaveWorkedWith" != \'NA\' GROUP BY 1',
+            "display": "pie",
+            "visualization_settings": {}
+        },
+        {
+            "name": "Webframe Used Repartition",
+            "sql": 'SELECT "WebframeHaveWorkedWith", COUNT(*) FROM analytics_webframe WHERE "WebframeHaveWorkedWith" != \'NA\' GROUP BY 1',
+            "display": "pie",
+            "visualization_settings": {}
+        }
+    ]
+
+    db_id = get_database_id(headers, metabase_url, db_name="PostgreSQL")
+
+    delete_old_cards(headers, metabase_url, visualizations)
+
+    create_cards(db_id, metabase_url, headers, visualizations)
+
+    create_dashboard(session_id, headers, metabase_url)
+
+
+if __name__ == "__main__":
+    try:
+        run_init_metabase()
+    except HTTPException as e:
+        print(f"Error {e.status_code}: {e.detail}")

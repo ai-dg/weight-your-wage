@@ -6,3 +6,6 @@ CREATE DATABASE mlflow_db OWNER mlflow_user;
 
 -- Give the user permissions
 GRANT ALL PRIVILEGES ON DATABASE mlflow_db TO mlflow_user;
+
+DROP DATABASE IF EXISTS metabase_metadata;
+CREATE DATABASE metabase_metadata;

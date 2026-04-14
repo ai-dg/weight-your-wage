@@ -265,7 +265,7 @@ def run_minio_import_postgresql():
             ("exchange_rate_2025.csv", "staging_exchange")
         ]
 
-        production = List[Tuple[Path, str, str]] = [
+        production: List[Tuple[Path, str, str]] = [
             (BASE_DIR / "mapping_prod_survey.json", "staging_survey", "prod_survey"),
             (BASE_DIR / "mapping_prod_exchange.json", "staging_exchange", "prod_exchange")
         ]
