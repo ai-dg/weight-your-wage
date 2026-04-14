@@ -3,6 +3,7 @@ from fastapi import FastAPI, BackgroundTasks
 from fastapi import Request
 import pandas as pd
 from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse
 import uuid
 import datetime
 from loguru import logger
@@ -55,6 +56,17 @@ def main():
 			logger.error(f"[train] Error: {e}")
 			import traceback
 			traceback.print_exc()
+
+	@app.get("/jobs/eda")
+	def eda():
+		from srcs.model.data_preprocessor import SalaryDataModule
+		data_module = SalaryDataModule(data="./srcs/model/datasets/survey_results_public.csv")
+		data_module.setup("EDA")
+
+		return FileResponse(
+			path="./srcs/model/EDA.html",
+			filename="EDA.html"
+		)
 
 	@app.post("/jobs/train")
 	def train(background_tasks: BackgroundTasks):
