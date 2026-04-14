@@ -51,7 +51,7 @@ def GeneralCleaner():
         nb_features = X_train_scaled.shape[1]
         model = SalaryModel(nb_features=nb_features) 
 
-        model.skip_validation_hook = True
+        model.skip_graph = True
 
         trainer = L.Trainer(
             max_epochs=10, 

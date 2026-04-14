@@ -13,6 +13,7 @@ from loguru import logger
 import plotly.figure_factory as ff
 from cleanlab import Datalab
 from cleanlab.regression.rank import get_label_quality_scores
+import matplotlib.pyplot as plt
 
 seed = 42
 random.seed(seed)
@@ -88,7 +89,7 @@ class SalaryModel(L.LightningModule):
 		return optimizer
 
 	def on_train_end(self):
-		if getattr(self, 'skip_validation_hook', False):
+		if getattr(self, 'skip_graph', False):
 			return
 		# Get val dataset
 		val_dataloader = self.trainer.datamodule.val_dataloader()
@@ -103,6 +104,8 @@ class SalaryModel(L.LightningModule):
 
 		#log rmse
 		self.log_rmse(y_true, y_hat)
+		self.log_mae(y_true, y_hat)
+		self.log_me(y_true, y_hat)
 
 		#check data / cleanlab
 		# quality_scores = get_label_quality_scores(
@@ -164,6 +167,38 @@ class SalaryModel(L.LightningModule):
 		return [X, y_true, y_hat]
 
 	def log_rmse(self, y_true, y_hat):
+		#Sorting y_true / y_hat
+		# index = np.argsort(y_true)
+		# y_true = y_true[index]
+		# y_hat = y_hat[index]
+
+		all_rmse = []
+		all_y = []
+		step = 1
+		width = 2000
+
+		y_hat_min = np.min(y_hat)
+		y_hat_max = np.max(y_hat)
+
+		x = y_hat_min
+		while x + width <= y_hat_max:
+			mask = (y_hat >= x) & (y_hat < x + width)
+			if np.sum(mask) > 5:  # avoid noisy estimates
+				err = y_true[mask] - y_hat[mask]
+				rmse = np.sqrt(np.mean(err**2))
+				all_y.append(x + width / 2)
+				all_rmse.append(rmse)
+
+			x += step
+
+		logger.info(f"Local rmse : shape {len(all_y)}")
+		logger.info(f"Local rmse : min {np.min(all_rmse)}  /  max {np.max(all_rmse)}")
+		plt.plot(all_y, all_rmse)
+		plt.xlabel("Prediction (y_hat)")
+		plt.ylabel("RMSE")
+		plt.title("RMSE as function of prediction")
+		plt.savefig("graph/RMSE.png")
+		plt.close()
 		rmse = np.sqrt(np.mean((y_true - y_hat)**2))
 		logger.info(f"rmse : {rmse}")
 		content = {
@@ -177,3 +212,31 @@ class SalaryModel(L.LightningModule):
 			local_path="rmse.json",
 			artifact_path="rmse"
 		)
+
+	def log_mae(self, y_true, y_hat):
+		mae = np.abs(y_true - y_hat)
+
+		logger.info(f"Min mae : {np.min(mae)} / Max mae : {np.max(mae)} / Mean mae : {np.mean(mae)} / Median mae : {np.median(mae)}")
+		q20 = np.quantile(mae, 0.2)
+		median = np.median(mae)
+		q80 = np.quantile(mae, 0.8)
+		plt.axhline(y=q20, color='red', linestyle='--', label='q20')
+		plt.axhline(y=median, color='red', linestyle='--', label='median')
+		plt.axhline(y=q80, color='red', linestyle='--', label='q80')
+		plt.scatter(y_hat, mae, s=4)
+		plt.xlabel("Prediction (y_hat)")
+		plt.ylabel("MAE")
+		plt.title("MAE as function of prediction")
+		plt.savefig("MAE.png")
+		plt.close()
+  
+	def log_me(self, y_true, y_hat):
+		me = y_true - y_hat
+
+		logger.info(f"Min me : {np.min(me)} / Max me : {np.max(me)} / Mean me : {np.mean(me)} / Median me : {np.median(me)}")
+		plt.scatter(y_hat, me, s=4)
+		plt.xlabel("Prediction (y_hat)")
+		plt.ylabel("ME")
+		plt.title("ME as function of prediction")
+		plt.savefig("ME.png")
+		plt.close()
