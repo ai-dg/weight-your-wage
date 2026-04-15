@@ -1,9 +1,9 @@
 import os
 import time
 import requests
-from dotenv import load_dotenv
 from fastapi import HTTPException, status
 import logging
+from api.config import settings
 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -11,7 +11,7 @@ logger = logging.getLogger("metabase_setter")
 
 
 def wait_for_metabase():
-    metabase_url = os.getenv("METABASE_URL")
+    metabase_url = settings.metabase_url
     if not metabase_url:
         msg = "Missing environment variable: METABASE_URL."
         logger.critical(msg)
@@ -34,7 +34,7 @@ def wait_for_metabase():
         time.sleep(5)
 
 def get_setup_token():
-    metabase_url = os.getenv("METABASE_URL")
+    metabase_url = settings.metabase_url
     if not metabase_url:
         msg = "Missing environment variable: METABASE_URL."
         logger.critical(msg)
@@ -64,16 +64,14 @@ def get_setup_token():
         )
 
 def perform_setup(token):
-    first_name = os.getenv("METABASE_ADMIN_FIRST_NAME")
-    last_name = os.getenv("METABASE_ADMIN_LAST_NAME")
-    email = os.getenv("METABASE_ADMIN_EMAIL")
-    password = os.getenv("METABASE_ADMIN_PASSWORD")
-    site_name = os.getenv("METABASE_SITE_NAME")
-    metabase_url = os.getenv("METABASE_URL")
+    first_name = settings.metabase_admin_first_name
+    last_name = settings.metabase_admin_last_name
+    email = settings.metabase_admin_email
+    password = settings.metabase_admin_password
+    metabase_url = settings.metabase_url
 
-
-    if not all([first_name, last_name, email, password, site_name, metabase_url]):
-        msg = "Missing environment variables: METABASE_ADMIN_FIRST_NAME, METABASE_ADMIN_LAST_NAME, METABASE_ADMIN_EMAIL, METABASE_ADMIN_PASSWORD, METABASE_URL, METABASE_SITE_NAME or METABASE_URL."
+    if not all([first_name, last_name, email, password, metabase_url]):
+        msg = "Missing environment variables: METABASE_ADMIN_FIRST_NAME, METABASE_ADMIN_LAST_NAME, METABASE_ADMIN_EMAIL, METABASE_ADMIN_PASSWORD, METABASE_URL or METABASE_URL."
         logger.critical(msg)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -93,7 +91,7 @@ def perform_setup(token):
             
         },
         "prefs": {
-            "site_name": site_name,
+            "site_name": "Data Analytics Stack",
             "site_locale": "fr",
             "allow_tracking": False
         }
@@ -119,32 +117,18 @@ def perform_setup(token):
 
 def connect_database(session_id):
     headers = {"X-Metabase-Session": session_id}
-    db_name = os.getenv("DB_NAME")
-    user = os.getenv("DB_USER")
-    db_password = os.getenv("DB_PASSWORD")
-    port = os.getenv("DB_PORT")
-    metabase_url = os.getenv("METABASE_URL")
+    metabase_url = settings.metabase_url
 
-    if not all([db_name, user, db_password, port, metabase_url]):
-        msg = "Missing environment variables: DB_NAME, DB_USER, DB_PASSWORD, DB_PORT or METABASE_URL."
-        logger.critical(msg)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "error": "ConnectDatabaseError",
-                "message": msg
-                }
-        )
 
     db_payload = {
         "name": "PostgreSQL",
         "engine": "postgres",
         "details": {
-            "host": "postgres",
-            "port": int(port),
-            "db": db_name,
-            "user": user,
-            "password": db_password,
+            "host": settings.postgres_host,
+            "port": int(settings.postgres_port),
+            "db": settings.postgres_db,
+            "user": settings.postgres_user,
+            "password": settings.postgres_password,
             "ssl": False
         }
     }
@@ -165,7 +149,6 @@ def connect_database(session_id):
 
 
 def run_setup_metabase():
-    load_dotenv()
     wait_for_metabase()
     token = get_setup_token()
     if token:

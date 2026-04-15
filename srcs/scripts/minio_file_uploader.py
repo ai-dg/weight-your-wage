@@ -1,12 +1,12 @@
 from minio import Minio
 from minio.error import S3Error
-from dotenv import load_dotenv
 from pathlib import Path
 from typing import List, Tuple
 from fastapi import HTTPException, status
 import traceback
 import os
 import logging
+from api.config import settings
 
 logging.basicConfig(
     level=logging.INFO,
@@ -15,23 +15,13 @@ logging.basicConfig(
 logger = logging.getLogger("minio_uploader")
 
 def get_minio_client() -> Minio:
-    load_dotenv()
-    endpoint = os.getenv("MINIO_ENDPOINT")
-    access_key=os.getenv("MINIO_ROOT_USER")
-    secret_key=os.getenv("MINIO_ROOT_PASSWORD")
-
-    if not all([endpoint, access_key, secret_key]):
-        msg = "Missing environment variables: MINIO_ENDPOINT, MINIO_ROOT_USER, or MINIO_ROOT_PASSWORD."
-        logger.critical(msg)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "error": "ConfigError",
-                "message": msg
-                }
-        )
     try:
-        client = Minio(endpoint, access_key=access_key, secret_key=secret_key, secure=False)
+        client = Minio(
+            endpoint=settings.minio_endpoint,
+            access_key=settings.minio_root_user,
+            secret_key=settings.minio_root_password,
+            secure=False
+        )
         return client
     except Exception as e:
         logger.error(f"Failed to initialize MinIO client: {str(e)}")
@@ -46,12 +36,10 @@ def get_minio_client() -> Minio:
 
 def run_csv_import_minio():
     client = get_minio_client()
-    bucket_name = "raw-data"
-    BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
-    
+    bucket_name = "raw-data"    
     uploads: List[Tuple[Path, str]] = [
-        (BASE_DIR / "srcs/model/datasets/survey_results_public.csv", "stack_overflow_2025.csv"),
-        (BASE_DIR / "srcs/model/datasets/currency_2025.csv", "exchange_rate_2025.csv")
+        (Path("./srcs/model/datasets/survey_results_public.csv"), "stack_overflow_2025.csv"),
+        (Path("./srcs/model/datasets/currency_2025.csv"), "exchange_rate_2025.csv")
     ]
 
     try:

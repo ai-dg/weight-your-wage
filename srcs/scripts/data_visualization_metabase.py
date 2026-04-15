@@ -4,6 +4,7 @@ import requests
 from fastapi import HTTPException, status
 import traceback
 import logging
+from api.config import settings
 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -11,10 +12,9 @@ logger = logging.getLogger("metabase_creater")
 
 
 def get_metabase_client():
-    load_dotenv()
-    username = os.getenv("METABASE_ADMIN_EMAIL")
-    password = os.getenv("METABASE_ADMIN_PASSWORD")
-    metabase_url = os.getenv("METABASE_URL")
+    username = settings.metabase_admin_email
+    password = settings.metabase_admin_password
+    metabase_url = settings.metabase_url
         
     if not all([username, password, metabase_url]):
         msg = "Missing environment variables: METABASE_ADMIN_EMAIL, METABASE_ADMIN_PASSWORD, or METABASE_URL."
@@ -176,13 +176,12 @@ def get_card_mapping(session_id, metabase_url):
 
 def get_dashboard_id(session_id, name, metabase_url):
     headers = {"X-Metabase-Session": session_id}
-    
     try:
-        res = requests.get(f"{metabase_url}/search?q={name}&models=dashboard", headers=headers)
+        res = requests.get(f"{metabase_url}/dashboard", headers=headers)
         res.raise_for_status()
-        results = res.json()
+        dashboards = res.json()
     
-        for dashboard in results['data']:
+        for dashboard in dashboards:
             if dashboard['name'] == name:
                 return dashboard['id']
         return None
@@ -202,23 +201,24 @@ def create_dashboard(session_id, headers, metabase_url):
     payload = [
         {
             "name": "Work Env",
-            "description": "...11",
+            "description": "Dashboards showing the distribution of work tools",
         },
         {
-            "name": "Some Information",
-            "description": "...22",
+            "name": "General Data",
+            "description": "Dashboards on data regarding individuals who have filed for unemployment benefits",
         }
     ]
 
-    dashboard_name = ["Work Env", "Some Information"]
+    dashboard_names = [p["name"] for p in payload]
+    dash_ids = []
 
     try:
         for pay in payload:
-            for key, val in pay.items():
-                if key == "name":
-                    dash_id = get_dashboard_id(session_id, val, metabase_url)
-            if dash_id:
+            name = pay["name"]
+            existing_id = get_dashboard_id(session_id, name, metabase_url)
+            if existing_id:
                 logger.info(f"Dashboard {val} already exist (ID: P{dash_id})")
+                dash_ids.append(existing_id)
             else:
                 response = requests.post(
                     f"{metabase_url}/dashboard",
@@ -226,6 +226,9 @@ def create_dashboard(session_id, headers, metabase_url):
                     json=pay
                 )
                 response.raise_for_status()
+                new_id = response.json().get("id")
+                logger.info(f"Dashboard '{name}' created successfully.")
+                dash_ids.append(new_id)
     
     except requests.exceptions.RequestException as e:
         logger.error(f"Metabase Dashboard Creation Failed: {e}")
@@ -238,10 +241,6 @@ def create_dashboard(session_id, headers, metabase_url):
         )
 
     mapping = get_card_mapping(session_id, metabase_url)
-    dash_id = []
-
-    for name in dashboard_name:
-        dash_id.append(get_dashboard_id(session_id, name, metabase_url))
     
     payload = [ 
         {
@@ -316,7 +315,7 @@ def create_dashboard(session_id, headers, metabase_url):
                 },
                 {
                     "id": -3,
-                    "card_id": mapping.get("Salary Evolution by Years Code"),
+                    "card_id": mapping.get("Salary Evolution by Years of Coding Experience"),
                     "size_x": 24,
                     "size_y": 8,
                     "row": 16,
@@ -327,7 +326,7 @@ def create_dashboard(session_id, headers, metabase_url):
     ]
 
     try:
-        for pay, id in zip(payload, dash_id):
+        for pay, id in zip(payload, dash_ids):
             response = requests.put(
                 f"{metabase_url}/dashboard/{id}/cards",
                 headers=headers,

@@ -176,11 +176,26 @@ services:
       - USER=appuser
       - LOGNAME=appuser
       - NVIDIA_VISIBLE_DEVICES=all
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_HOST=${DB_HOST}
+      - POSTGRES_PORT=${DB_PORT}
+      - METABASE_URL=${METABASE_URL}
+      - METABASE_ADMIN_EMAIL=${METABASE_ADMIN_EMAIL}
+      - METABASE_ADMIN_PASSWORD=${METABASE_ADMIN_PASSWORD}
+      - METABASE_ADMIN_FIRST_NAME=${METABASE_ADMIN_FIRST_NAME}
+      - METABASE_ADMIN_LAST_NAME=${METABASE_ADMIN_LAST_NAME}
     volumes:
       - model:/app/srcs/model/
       - api:/app/srcs/api/
+      - scripts:/app/srcs/scripts
     networks:
       - model_network
+      - postgres_network
 
   # ── Database (app) ────────────────────────────────────────────────────────
   postgres:
@@ -308,6 +323,13 @@ volumes:
       type: none
       o: bind
       device: ${PWD}/srcs/data/grafana_data
+
+  scripts:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/srcs/scripts
 
 networks:
   postgres_network:

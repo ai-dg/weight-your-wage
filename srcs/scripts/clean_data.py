@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from sqlalchemy import create_engine, exc
 from fastapi import HTTPException, status
 from model.features_answer import get_features
+from api.config import settings
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("data_cleaner")
@@ -16,12 +17,22 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.
 
 
 def get_db_engine():
-    load_dotenv()
-    user=os.getenv('DB_USER')
-    password=os.getenv('DB_PASSWORD')
-    host=os.getenv('DB_HOST')
-    port=os.getenv('DB_PORT')
-    dbname=os.getenv('DB_NAME')
+    try:
+        dbname=settings.postgres_db
+        user=settings.postgres_user
+        password=settings.postgres_password
+        host=settings.postgres_host
+        port=settings.postgres_port
+    except Exception as e:
+        logger.error(f"Failed to connect PosgreSQL engine: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "error": type(e).__name__,
+                "message": str(e),
+                "context": "PostgreSQL Engine Connection"
+            }
+        )
 
     if not all([user, password, host, port, dbname]):
         msg = "Missing environment variables: DB_USER, DB_PASSWORD, DB_HOST, DB_PORT or DB_NAME."

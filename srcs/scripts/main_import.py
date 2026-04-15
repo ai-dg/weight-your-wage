@@ -3,7 +3,6 @@ import psycopg2
 from psycopg2 import sql
 import os
 import sys
-from dotenv import load_dotenv
 import json
 from pathlib import Path
 from minio import Minio
@@ -13,6 +12,7 @@ from fastapi import HTTPException, status
 from typing import List, Tuple
 from minio.error import S3Error
 import traceback
+from api.config import settings
 
 
 logging.basicConfig(
@@ -26,29 +26,13 @@ csv.field_size_limit(sys.maxsize)
 
 
 def get_db_client():
-    dbname=os.getenv('DB_NAME')
-    user=os.getenv('DB_USER')
-    password=os.getenv('DB_PASSWORD')
-    host=os.getenv('DB_HOST')
-    port=os.getenv('DB_PORT')
-
-    if not all([dbname, user, password, host, port]):
-        msg = "Missing environment variables: DB_NAME, DB_USER, DB_PASSWORD, DB_HOST, or DB_PORT."
-        logger.critical(msg)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "error": "ConfigError",
-                "message": msg
-            }
-        )
     try:
         conn = psycopg2.connect(
-        dbname=dbname,
-        user=user,
-        password=password,
-        host=host,
-        port=port
+        dbname=settings.postgres_db,
+        user=settings.postgres_user,
+        password=settings.postgres_password,
+        host=settings.postgres_host,
+        port=settings.postgres_port
         )
         return conn
     except Exception as e:
@@ -64,22 +48,13 @@ def get_db_client():
 
 
 def get_minio_client() -> Minio:
-    endpoint = os.getenv("MINIO_ENDPOINT")
-    access_key=os.getenv("MINIO_ROOT_USER")
-    secret_key=os.getenv("MINIO_ROOT_PASSWORD")
-
-    if not all([endpoint, access_key, secret_key]):
-        msg = "Missing environment variables: MINIO_ENDPOINT, MINIO_ROOT_USER, or MINIO_ROOT_PASSWORD."
-        logger.critical(msg)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "error": "ConfigError",
-                "message": msg
-            }
-        )
     try:
-        client = Minio(endpoint, access_key=access_key, secret_key=secret_key, secure=False)
+        client = Minio(
+            endpoint=settings.minio_endpoint,
+            access_key=settings.minio_root_user,
+            secret_key=settings.minio_root_password,
+            secure=False
+        )
         return client
     except Exception as e:
         logger.error(f"Failed to initialize MinIO client: {str(e)}")
@@ -254,11 +229,9 @@ def clean_transfer_data(cursor, mapping_file, staging_table, prod_table):
 def run_minio_import_postgresql():
     conn = None
     try:
-        load_dotenv()
         conn = get_db_client()
         client = get_minio_client()
         bucket = "raw-data"
-        BASE_DIR = Path(__file__).resolve().parent
 
         staging: List[Tuple[str, str]] = [
             ("stack_overflow_2025.csv", "staging_survey"),
@@ -266,8 +239,8 @@ def run_minio_import_postgresql():
         ]
 
         production: List[Tuple[Path, str, str]] = [
-            (BASE_DIR / "mapping_prod_survey.json", "staging_survey", "prod_survey"),
-            (BASE_DIR / "mapping_prod_exchange.json", "staging_exchange", "prod_exchange")
+            (Path("./srcs/scripts/mapping_prod_survey.json"), "staging_survey", "prod_survey"),
+            (Path("./srcs/scripts/mapping_prod_exchange.json"), "staging_exchange", "prod_exchange")
         ]
 
         with conn.cursor() as cursor:

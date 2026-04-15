@@ -11,7 +11,6 @@ from loguru import logger
 import json
 
 
-logger = logging.getLogger("app_api")
 jobs = {}
 
 
@@ -69,16 +68,10 @@ def main():
 			path="./srcs/model/EDA.html",
 			filename="EDA.html"
 		)
-		finally:
-			sys.stdout.flush()
-			sys.stderr.flush()
 
 	def _run_upload_minio_task(job_id: str):
-		import sys
-		sys.stdout.reconfigure(line_buffering=True) if hasattr(sys.stdout, "reconfigure") else None
-		sys.stderr.reconfigure(line_buffering=True) if hasattr(sys.stderr, "reconfigure") else None
 		try:
-			from srcs.services.minio.minio_file_uploader import run_csv_import_minio
+			from srcs.scripts.minio_file_uploader import run_csv_import_minio
 			run_csv_import_minio()
 			jobs[job_id]["status"] = "done"
 			print("[upload minio file] Importation completed.", flush=True)
@@ -90,16 +83,11 @@ def main():
 			jobs[job_id]["status"] = "failed"
 			print(f"[upload minio file] Error: {e}", flush=True)
 			logger.exception(f"Critical failure in background job {job_id}")
-		finally:
-			sys.stdout.flush()
-			sys.stderr.flush()
+
 
 	def _run_import_minio_postgresql_task(job_id: str):
-		import sys
-		sys.stdout.reconfigure(line_buffering=True) if hasattr(sys.stdout, "reconfigure") else None
-		sys.stderr.reconfigure(line_buffering=True) if hasattr(sys.stderr, "reconfigure") else None
 		try:
-			from srcs.services.postgresql.main_import import run_minio_import_postgresql
+			from srcs.scripts.main_import import run_minio_import_postgresql
 			run_minio_import_postgresql()
 			jobs[job_id]["status"] = "done"
 			print("[import postgresql] Importation completed.", flush=True)
@@ -111,16 +99,11 @@ def main():
 			jobs[job_id]["status"] = "failed"
 			print(f"[import postgresql] Error: {e}", flush=True)
 			logger.exception(f"Critical failure in background job {job_id}")
-		finally:
-			sys.stdout.flush()
-			sys.stderr.flush()
+
 
 	def _run_clean_data_task(job_id: str):
-		import sys
-		sys.stdout.reconfigure(line_buffering=True) if hasattr(sys.stdout, "reconfigure") else None
-		sys.stderr.reconfigure(line_uffering=True) if hasattr(sys.stderr, "reconfigure") else None
 		try:
-			from srcs.services.postgresql.clean_data import run_clean_data
+			from srcs.scripts.clean_data import run_clean_data
 			run_clean_data()
 			jobs[job_id]["status"] = "done"
 			print("[clean data] Data cleaned.", flush=True)
@@ -132,16 +115,11 @@ def main():
 			jobs[job_id]["status"] = "failed"
 			print(f"[clean data] Error: {e}", flush=True)
 			logger.exception(f"Critical failure in background job {job_id}")
-		finally:
-			sys.stdout.flush()
-			sys.stderr.flush()
+
 
 	def _run_setup_metabase_task(job_id: str):
-		import sys
-		sys.stdout.reconfigure(line_buffering=True) if hasattr(sys.stdout, "reconfigure") else None
-		sys.stderr.reconfigure(line_buffering=True) if hasattr(sys.stderr, "reconfigure") else None
 		try:
-			from srcs.services.metabase.setup_metabase import run_setup_metabase
+			from srcs.scripts.setup_metabase import run_setup_metabase
 			run_setup_metabase()
 			jobs[job_id]["status"] = "done"
 			print("[setup metabase] Metabase set up.", flush=True)
@@ -153,16 +131,11 @@ def main():
 			jobs[job_id]["status"] = "failed"
 			print(f"[setup metabase] Error: {e}", flush=True)
 			logger.exception(f"Critical failure in background job {job_id}")
-		finally:
-			sys.stdout.flush()
-			sys.stderr.flush()
+
 
 	def _run_data_visualization_metabase_task(job_id: str):
-		import sys
-		sys.stdout.reconfigure(line_buffering=True) if hasattr(sys.stdout, "reconfigure") else None
-		sys.stderr.reconfigure(line_buffering=True) if hasattr(sys.stderr, "reconfigure") else None
 		try:
-			from srcs.services.metabase.data_visualization_metabase import run_data_visualization_metabase
+			from srcs.scripts.data_visualization_metabase import run_data_visualization_metabase
 			run_data_visualization_metabase()
 			jobs[job_id]["status"] = "done"
 			print("[data visualization metabase] Metabase set up.", flush=True)
@@ -174,9 +147,6 @@ def main():
 			jobs[job_id]["status"] = "failed"
 			print(f"[data visualization metabase] Error: {e}", flush=True)
 			logger.exception(f"Critical failure in background job {job_id}")
-		finally:
-			sys.stdout.flush()
-			sys.stderr.flush()
 
 
 	@app.post("/jobs/train")
