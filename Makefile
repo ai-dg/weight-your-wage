@@ -1,51 +1,50 @@
-COMPOSE_FILE = srcs/docker-compose.yml
-COMPOSE = docker compose -f $(COMPOSE_FILE)
+COMPOSE_FILES = srcs/docker-compose.yml
+COMPOSE_GPU_FILE = srcs/docker-compose.gpu.yml
 
 ifneq (,$(wildcard srcs/.env))
 include srcs/.env
-export
+export PWD := $(shell pwd)
 endif
 
 DATA_DIRS = .venv srcs/data/postgres srcs/data/postgres_mlflow srcs/data/minio srcs/data/artifacts srcs/data/grafana_data srcs/data/prometheus srcs/logs
 
 .PHONY: build up down downv logs stop start clean fclean dirs fix-perms
 
+
+# --- GPU Auto-Detection
+HAS_GPU := $(shell nvidia-smi > /dev/null 2>&1 && echo "yes" || echo "no")
+
+ifeq ($(HAS_GPU),yes)
+COMPOSE_FILES += -f $(COMPOSE_GPU_FILE)
+$(info GPU mode: Enabled)
+else
+$(info GPU mode: Disabled (CPU only))
+endif
+
+# --- Environment profile
+PROFILES :=
+ifneq ($(NODE_ENV),PROD)
+PROFILES += --profile dev
+endif
+
+COMPOSE = docker compose -f $(COMPOSE_FILES) $(PROFILES)
+
 build: dirs
-	if [ "$(NODE_ENV)" = "PROD" ]; then \
-		$(MAKE) dependencies-py; \
-		$(COMPOSE) build; \
-		$(COMPOSE) up -d --remove-orphans; \
-		$(MAKE) logs-finder; \
-		sudo chmod -R 777 ./*; \
-	else \
-		$(MAKE) dependencies-py; \
-		$(COMPOSE) build; \
-		$(COMPOSE) --profile dev up -d --remove-orphans; \
-		$(MAKE) logs-finder; \
-		sudo chmod -R 777 ./*; \
-	fi
+	$(MAKE) dependencies-py
+	$(COMPOSE) build
+	$(COMPOSE) up -d --remove-orphans
+	$(MAKE) logs-finder
+	sudo chmod -R 777 ./*
 
 up: dirs
-	if [ "$(NODE_ENV)" = "PROD" ]; then \
-		$(COMPOSE) up -d --remove-orphans; \
-	else \
-		$(COMPOSE) --profile dev up -d --remove-orphans; \
-	fi
-
+	$(COMPOSE) up -d --remove-orphans
+	
 down:
-	if [ "$(NODE_ENV)" = "PROD" ]; then \
-		$(COMPOSE) down; \
-	else \
-		$(COMPOSE) --profile dev down; \
-	fi
+	$(COMPOSE) down
 
 downv:
 	$(MAKE) logs-kill-finder
-	if [ "$(NODE_ENV)" = "PROD" ]; then \
-		$(COMPOSE) down -v; \
-	else \
-		$(COMPOSE) --profile dev down -v; \
-	fi
+	$(COMPOSE) down -v
 
 stop: down
 
@@ -69,11 +68,7 @@ fix-perms:
 
 clean: down
 	@echo "Stopping services and removing containers..."
-	if [ "$(NODE_ENV)" = "PROD" ]; then \
-		$(COMPOSE) down -v; \
-	else \
-		$(COMPOSE) --profile dev down -v; \
-	fi
+	$(COMPOSE) down -v
 
 logs-finder:
 	@bash srcs/scripts/logs/log-finder.sh

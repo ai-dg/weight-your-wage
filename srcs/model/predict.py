@@ -43,9 +43,9 @@ def GeneralInferencer(data: dict):
 
     salary_model = mlflow.pytorch.load_model(f"models:/{MODEL_NAME}@{CHAMPION_ALIAS}")
     trainer = L.Trainer(
-        accelerator="gpu",
-        devices=1,
-        precision="16-mixed"
+        accelerator="auto",
+        devices="auto",
+        precision="16-mixed" if torch.cuda.is_available() else "32-true",
     )
 
     y_hat = trainer.predict(

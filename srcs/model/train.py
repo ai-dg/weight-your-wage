@@ -41,9 +41,9 @@ def GeneralTrainer():
 			EarlyStopping(monitor="val_r2", mode="max", patience=5, verbose=True),
 	]
 	trainer = L.Trainer(
-		accelerator="gpu",
-		devices=1,
-		precision="16-mixed",
+		accelerator="auto",
+		devices="auto",
+		precision="16-mixed" if torch.cuda.is_available() else "32-true",
 		deterministic=True,
 		max_epochs=100,
 		logger=mlf_logger,

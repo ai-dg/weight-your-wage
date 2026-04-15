@@ -166,13 +166,6 @@ services:
       - 4243
     ports:
       - "0.0.0.0:4243:4243"
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
     environment:
       - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
@@ -187,7 +180,6 @@ services:
       - api:/app/srcs/api/
     networks:
       - model_network
-
 
   # ── Database (app) ────────────────────────────────────────────────────────
   postgres:
