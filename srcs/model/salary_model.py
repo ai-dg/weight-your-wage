@@ -34,17 +34,17 @@ class SalaryModel(L.LightningModule):
 		self.base_model = nn.Sequential(
 			nn.Linear(nb_features, 512),
 			nn.BatchNorm1d(512),
-			nn.ReLU(),
+			nn.SiLU(),
 			nn.Dropout(0.2),
 			nn.Linear(512, 128),
 			nn.BatchNorm1d(128),
-			nn.ReLU()
+			nn.SiLU()
 		)
 		self.regressor =  nn.Sequential(
 			nn.Linear(128, 32),
 			nn.BatchNorm1d(32),
+			nn.SiLU(), 
 			nn.Dropout(0.2),
-			nn.ReLU(), 
 			nn.Linear(32, 1)
 		)
 		self.lr = lr
@@ -58,14 +58,14 @@ class SalaryModel(L.LightningModule):
 	def training_step(self, batch):
 		x, y = batch
 		y_hat = self(x)
-		loss = F.mse_loss(y_hat, y)
+		loss = F.huber_loss(y_hat, y, delta=1.0)
 		self.log("train_loss", loss, on_step=False, on_epoch=True, logger=True, prog_bar=True)
 		return loss
 	
 	def validation_step(self, batch):
 		x, y = batch
 		y_hat = self(x)
-		val_loss = F.mse_loss(y_hat, y)
+		val_loss = F.huber_loss(y_hat, y, delta=1.0)
 		self.log("val_loss", val_loss, on_step=False, on_epoch=True, logger=True, prog_bar=True)
 		val_r2 = self.val_r2_metric(y_hat, y)
 		self.log("val_r2", val_r2, on_step=False, on_epoch=True, logger=True, prog_bar=True)
@@ -74,7 +74,7 @@ class SalaryModel(L.LightningModule):
 	def test_step(self, batch):
 		x, y = batch
 		y_hat = self(x)
-		test_loss = F.mse_loss(y_hat, y)
+		test_loss = F.huber_loss(y_hat, y, delta=1.0)
 		self.log("test_loss", test_loss, on_step=False, on_epoch=True, logger=True, prog_bar=True)
 		test_r2 = self.test_r2_metric(y_hat, y)
 		self.log("test_r2", test_r2, on_step=False, on_epoch=True, logger=True, prog_bar=True)
