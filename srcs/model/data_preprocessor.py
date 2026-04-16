@@ -1,3 +1,5 @@
+import os
+from loguru import logger
 import numpy as np
 import pandas as pd
 from ydata_profiling import ProfileReport
@@ -9,21 +11,13 @@ from torch.utils.data import DataLoader, TensorDataset
 import lightning as L
 
 from sklearn.model_selection import train_test_split 
-from sklearn.preprocessing import MultiLabelBinarizer, OrdinalEncoder, OneHotEncoder, StandardScaler, scale
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 
 from srcs.model.scikit_encoder import SmartOrdinalEncoder, SmartMultilabelEncoder, SmartOneHotEncoder
-from srcs.model.features_answer import get_features, get_features_answers
-
-import os
-from loguru import logger
-# from model.preprocessor_base import BasePreprocessor
-# from model.scikit_encoder import SmartOrdinalEncoder, SmartMultilabelEncoder, SmartOneHotEncoder
-# from model.features_answer import get_features, get_features_answers
-
-# class TrainingPreprocessor(BasePreprocessor):
+from srcs.model.features_answer import get_features
 
 class SalaryDataModule(L.LightningDataModule):
 
@@ -44,7 +38,7 @@ class SalaryDataModule(L.LightningDataModule):
 		if stage == 'EDA':
 			self.df = self.data if isinstance(self.data, pd.DataFrame) else pd.read_csv(self.data)
 			self.df = self.df[get_features()].copy()
-			self.cleaning_data()
+			self.update_currency()
 			self.df.to_csv("./srcs/model/datasets/data_EDA.csv")
 			EDA = profile = ProfileReport(self.df, title="Data (Before Preprocessing)")
 			return profile.to_file("./srcs/model/EDA.html")
@@ -53,49 +47,39 @@ class SalaryDataModule(L.LightningDataModule):
 			self.df = self.data if isinstance(self.data, pd.DataFrame) else pd.read_csv(self.data)
 			if "CompTotalEuro" not in self.df :
 				self.df = self.df[get_features()].copy()
-				self.cleaning_data()
+				self.update_currency()
 			self.init_encoder() #Create Columns Transformers
-
 			self.fit_pipeline()
+
 		elif stage == 'test':
 			self.X_test = pd.read_csv("./srcs/model/datasets/X_test.csv")
 			self.y_test = pd.read_csv("./srcs/model/datasets/y_test.csv")
 			self.ct = joblib.load(os.path.join(self.artifact_path, self.fit_encoder_filename))
 			self.scaler_y = joblib.load(os.path.join(self.artifact_path, self.target_scaler_filename))
-
 			self.X_test_scaled = self.ct.transform(self.X_test)
 			self.y_test_log = np.log1p(self.y_test)
 			logger.info(f"y_test : {self.y_test_log.shape}")
 			if self.y_test_log.shape[1] > 1:
 				self.y_test_log = self.y_test_log[:,1]
 			self.y_test_scaled = self.scaler_y.transform(self.y_test_log)
+
 		elif stage == 'predict':
 			logger.info("data: ", self.data)
 			self.df_predict = pd.DataFrame([self.data])
 			logger.info("predict_df: ", self.df_predict)
 			self.ct = joblib.load(self.fit_encoder_filename)
-			self.scaler_y = joblib.load(self.target_scaler_filename) #Maybe not needed here
+			self.scaler_y = joblib.load(self.target_scaler_filename)
 			self.X_predict_scaled = self.ct.transform(self.df_predict)
 
 	def __str__(self):
 		resume = f"{self.df}"
 		columns = f"{self.df.columns}"
-
 		return resume + "\n" + columns
-
-	######################################################################
-	##### 						CLEANING DATA						 #####
-	######################################################################
-
-	def cleaning_data(self):
-		self.df = self.df.dropna(subset="CompTotal")
-		self.df.loc[:, "Currency"] = self.df["Currency"].apply(self.erase_str)
-		self.update_currency()
-		return self.df
 
 	######################################################################
 	##### 						INIT ENCODER						 #####
 	######################################################################
+
 	def init_encoder(self):
 		need_numerical_encoding = ["WorkExp", "YearsCode"]
 
@@ -167,6 +151,9 @@ class SalaryDataModule(L.LightningDataModule):
 			Outliers are filtered out.
 		"""
 
+		self.df = self.df.dropna(subset="CompTotal")
+		self.df.loc[:, "Currency"] = self.df["Currency"].apply(lambda str : str[:3])
+
 		Salary_min = 1000
 		# Salary_max = 999999
 		Salary_max = 350_000
@@ -194,8 +181,8 @@ class SalaryDataModule(L.LightningDataModule):
 		self.df = self.df[mask].copy()
 		self.df.to_csv("./srcs/model/datasets/result_clean.csv")
 		# Delete the features Currency and CompTotal
-		self.drop_features(["Currency", "CompTotal"])
-
+		self.df.drop(columns=["Currency", "CompTotal"], inplace=True)
+		return self.df
 
 	def split_data(self, X: pd.DataFrame, y: pd.DataFrame, ratio_test : float = 0.1, ratio_val : float = 0.20, seed : int = 42):
 
@@ -217,14 +204,6 @@ class SalaryDataModule(L.LightningDataModule):
 	##### 						UTILS								 #####
 	######################################################################
 
-	@staticmethod
-	def erase_str(value :str):
-		return value[:3]
-
-	def drop_features(self, features:list[str]):
-		self.df.drop(columns=features, inplace=True)
-
-
 	def extract_target(self):
 		"""
 		Split the preprocessed dataframe into target and feature matrices.
@@ -238,11 +217,6 @@ class SalaryDataModule(L.LightningDataModule):
 		y = self.df.loc[:,"CompTotalEuro"]
 		X = self.df.drop("CompTotalEuro", axis=1)
 		return X, y
-
-	######################################################################
-	##### 					INIT PIPELINE							 #####
-	######################################################################
-	
 
 	######################################################################
 	##### 					FIT PIPELINE							 #####
@@ -315,10 +289,6 @@ def main():
 	with np.printoptions(threshold=np.inf):
 		print(f"Dataset X train: {SalaryData.X_train_scaled}")
 	print(f"Dataset y train: {SalaryData.y_train_scaled}")
-	
-
-	# EDA = profile = ProfileReport(datapreprocess.df, title="Data (After Cleaning)")
-	# profile.to_file("reports/data_analysis.html")
 
 if __name__ == "__main__":
     main()
