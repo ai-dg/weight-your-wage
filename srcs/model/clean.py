@@ -15,7 +15,8 @@ def GeneralCleaner():
     df = pd.read_csv("./srcs/model/datasets/survey_results_public.csv")
     data_module = SalaryDataModule()
     data_module.df = df[get_features()].copy()
-    data_module.init_pipeline()
+    data_module.cleaning_data()
+    data_module.init_encoder()
     X, y = data_module.extract_target()
     
     oos_predictions = np.zeros(len(y))

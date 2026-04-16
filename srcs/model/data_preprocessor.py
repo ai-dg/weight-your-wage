@@ -53,7 +53,9 @@ class SalaryDataModule(L.LightningDataModule):
 			self.df = self.data if isinstance(self.data, pd.DataFrame) else pd.read_csv(self.data)
 			if "CompTotalEuro" not in self.df :
 				self.df = self.df[get_features()].copy()
-			self.init_pipeline()
+				self.cleaning_data()
+			self.init_encoder() #Create Columns Transformers
+
 			self.fit_pipeline()
 		elif stage == 'test':
 			self.X_test = pd.read_csv("./srcs/model/datasets/X_test.csv")
@@ -167,7 +169,7 @@ class SalaryDataModule(L.LightningDataModule):
 
 		Salary_min = 1000
 		# Salary_max = 999999
-		Salary_max = 350_000
+		Salary_max = 250_000
 
 		# Use float64 limit as a ceiling
 		FLOAT_MAX = np.finfo(np.float64).max
@@ -241,9 +243,6 @@ class SalaryDataModule(L.LightningDataModule):
 	##### 					INIT PIPELINE							 #####
 	######################################################################
 	
-	def init_pipeline(self):
-		# self.cleaning_data()
-		self.init_encoder() #Create Columns Transformers
 
 	######################################################################
 	##### 					FIT PIPELINE							 #####
