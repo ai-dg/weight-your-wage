@@ -51,7 +51,8 @@ class SalaryDataModule(L.LightningDataModule):
 
 		if stage == 'fit':
 			self.df = self.data if isinstance(self.data, pd.DataFrame) else pd.read_csv(self.data)
-			# self.df = self.df[get_features()].copy()
+			if "CompTotalEuro" not in self.df :
+				self.df = self.df[get_features()].copy()
 			self.init_pipeline()
 			self.fit_pipeline()
 		elif stage == 'test':
@@ -63,7 +64,8 @@ class SalaryDataModule(L.LightningDataModule):
 			self.X_test_scaled = self.ct.transform(self.X_test)
 			self.y_test_log = np.log1p(self.y_test)
 			logger.info(f"y_test : {self.y_test_log.shape}")
-			# self.y_test_log = self.y_test_log[:,1]
+			if self.y_test_log.shape[1] > 1:
+				self.y_test_log = self.y_test_log[:,1]
 			self.y_test_scaled = self.scaler_y.transform(self.y_test_log)
 		elif stage == 'predict':
 			logger.info("data: ", self.data)
@@ -256,9 +258,6 @@ class SalaryDataModule(L.LightningDataModule):
 		self.X_train_scaled = self.ct.fit_transform(self.X_train, self.y_train)
 
 		feature_names = self.ct.get_feature_names_out()
-		# print(f"Input Features: {len(self.X_train.columns)}")
-		# print(f"Output Features (after encoding): {len(feature_names)}")
-		# print(f"All Output Features: {feature_names}")
 
 		self.X_val_scaled = self.ct.transform(self.X_val)
 
