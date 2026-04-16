@@ -93,8 +93,8 @@ services:
     container_name: minio
     image: minio/minio:latest
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     command: server /data --console-address ":9001"
     ports:
       - "9000:9000" #API
@@ -167,6 +167,7 @@ services:
     ports:
       - "0.0.0.0:4243:4243"
     environment:
+      - PYTHONPATH=/app/srcs
       - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
@@ -175,11 +176,26 @@ services:
       - USER=appuser
       - LOGNAME=appuser
       - NVIDIA_VISIBLE_DEVICES=all
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_HOST=${DB_HOST}
+      - POSTGRES_PORT=${DB_PORT}
+      - METABASE_URL=${METABASE_URL}
+      - METABASE_ADMIN_EMAIL=${METABASE_ADMIN_EMAIL}
+      - METABASE_ADMIN_PASSWORD=${METABASE_ADMIN_PASSWORD}
+      - METABASE_ADMIN_FIRST_NAME=${METABASE_ADMIN_FIRST_NAME}
+      - METABASE_ADMIN_LAST_NAME=${METABASE_ADMIN_LAST_NAME}
     volumes:
       - model:/app/srcs/model/
       - api:/app/srcs/api/
+      - scripts:/app/srcs/scripts
     networks:
       - model_network
+      - postgres_network
 
   # ── Database (app) ────────────────────────────────────────────────────────
   postgres:
@@ -192,7 +208,7 @@ services:
       POSTGRES_DB: ${DB_NAME}
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
-      - "5433:5432"
+      - "5460:5432"
     user: "${UID}:${GID}"
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -220,6 +236,26 @@ services:
       - postgres
     networks:
       - postgres_network
+
+  metabase:
+    image: metabase/metabase:latest
+    container_name: metabase
+    hostname: metabase
+    ports:
+      - "3002:3000"
+    environment:
+      - MB_DB_TYPE=postgres
+      - MB_DB_DBNAME=metabase_metadata
+      - MB_DB_PORT=${DB_PORT}
+      - MB_DB_USER=${DB_USER}
+      - MB_DB_PASS=${DB_PASSWORD}
+      - MB_DB_HOST=postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - postgres_network
+
 
   # ── Frontend ───────────────────────────────────────────────────────────────
   streamlite:
@@ -287,6 +323,13 @@ volumes:
       type: none
       o: bind
       device: ${PWD}/srcs/data/grafana_data
+
+  scripts:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/srcs/scripts
 
 networks:
   postgres_network:
