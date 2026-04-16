@@ -31,10 +31,11 @@ def GeneralTrainer():
 		experiment_name=EXPIREMENT_NAME
 	)
 
-	salary_data_module = SalaryDataModule("./srcs/model/datasets/survey_results_public.csv")
+	salary_data_module = SalaryDataModule("./srcs/model/datasets/survey_results_cleaned.csv")
 	salary_data_module.setup(stage="fit")
 	L.seed_everything(42, workers=True)
 	salary_model = SalaryModel(nb_features=salary_data_module.nb_features, lr=1e-5)
+	salary_model.skip_graph = True
 
 	callbacks = [
 			EarlyStopping(monitor="val_r2", mode="max", patience=5, verbose=True),

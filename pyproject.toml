@@ -21,7 +21,8 @@ dependencies = [
 	"setuptools<82.0.0",
 	"uvicorn>=0.42.0",
 	"ydata-profiling>=4.18.1",
-    "loguru>=0.7.3",
-    "plotly>=6.6.0",
-    "scipy>=1.15.3"
+   	"cleanlab[all]>=2.9.0",
+   	"loguru>=0.7.3",
+   	"plotly>=6.6.0",
+   	"scipy>=1.15.3"
 ]
