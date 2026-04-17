@@ -18,6 +18,7 @@ from sklearn.pipeline import Pipeline
 
 from srcs.model.scikit_encoder import SmartOrdinalEncoder, SmartMultilabelEncoder, SmartOneHotEncoder
 from srcs.model.features_answer import get_features
+from srcs.model.dl_dataset import download_survey_file
 
 class SalaryDataModule(L.LightningDataModule):
 
@@ -32,7 +33,11 @@ class SalaryDataModule(L.LightningDataModule):
 		self.df = None
 
 	def prepare_data(self):
-		pass
+		dataset_path = download_survey_file(
+			target_dir="./srcs/model/datasets",
+			filename="survey_results_public.csv",
+		)
+		logger.info(f"Dataset ready: {dataset_path}")
 
 	def setup(self, stage:str):
 		if stage == 'EDA':

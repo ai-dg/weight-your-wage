@@ -1,31 +1,29 @@
+from pathlib import Path
+
 import kagglehub
 import shutil
-import os
 
-# 1. Download the latest version of the 2025 Stack Overflow Survey
-print("Downloading dataset from Kaggle...")
-tmp_path = kagglehub.dataset_download("edoardogalli/stack-overflow-annual-developer-survey-2025")
 
-# 2. Define your local target folder
-target_folder = "srcs/model/datasets"
+DATASET_HANDLE = "edoardogalli/stack-overflow-annual-developer-survey-2025"
 
-# 3. Create the folder if it doesn't exist
-if not os.path.exists(target_folder):
-    os.makedirs(target_folder)
-    print(f"Created directory: {target_folder}")
 
-# 4. Move files from the cache to your local folder
-print(f"Moving files to ./{target_folder}...")
-files = os.listdir(tmp_path)
+def download_survey_file(target_dir: str = "./srcs/model/datasets", filename: str = "survey_results_public.csv") -> Path:
+    target_folder = Path(target_dir)
+    target_folder.mkdir(parents=True, exist_ok=True)
+    dataset_path = target_folder / filename
 
-for file_name in files:
-    source = os.path.join(tmp_path, file_name)
-    destination = os.path.join(target_folder, file_name)
-    
-    # Using move (or copy if you want to keep the cache version)
-    if os.path.isdir(source):
-        shutil.copytree(source, destination, dirs_exist_ok=True)
-    else:
-        shutil.copy2(source, destination)
+    if dataset_path.exists():
+        return dataset_path
 
-print("✅ Done! Your data is ready in the 'dataset' folder.")
+    print("Downloading dataset file from Kaggle...")
+    tmp_path = kagglehub.dataset_download(DATASET_HANDLE, path=filename)
+    shutil.copy2(tmp_path, dataset_path)
+    print(f"Saved file to {dataset_path}")
+    return dataset_path
+
+def main():
+    download_survey_file()
+
+
+if __name__ == "__main__":
+    main()

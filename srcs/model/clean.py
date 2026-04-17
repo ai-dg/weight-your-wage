@@ -12,10 +12,11 @@ from srcs.model.data_preprocessor import SalaryDataModule
 from srcs.model.features_answer import get_features
 
 def GeneralCleaner():
-    df = pd.read_csv("./srcs/model/datasets/survey_results_public.csv")
     data_module = SalaryDataModule()
+    data_module.prepare_data()
+    df = pd.read_csv("./srcs/model/datasets/survey_results_public.csv")
     data_module.df = df[get_features()].copy()
-    data_module.cleaning_data()
+    data_module.update_currency()
     data_module.init_encoder()
     X, y = data_module.extract_target()
     

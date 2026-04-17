@@ -3,6 +3,7 @@ import torch
 from srcs.model.salary_model import SalaryModel
 # from dataloader import DataLoaderClass
 from srcs.model.data_preprocessor import SalaryDataModule
+from srcs.model.clean import GeneralCleaner
 import lightning as L
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping, LearningRateMonitor, ModelSummary, LearningRateFinder
 from lightning.pytorch.loggers import CSVLogger, MLFlowLogger
@@ -24,6 +25,7 @@ def GeneralTrainer():
 
 	#Start clean
 	mlflow.end_run()
+	GeneralCleaner()
 
 	#Setup Logger
 	mlf_logger = MLFlowLogger(
@@ -32,6 +34,7 @@ def GeneralTrainer():
 	)
 
 	salary_data_module = SalaryDataModule("./srcs/model/datasets/survey_results_cleaned.csv")
+	salary_data_module.prepare_data()
 	salary_data_module.setup(stage="fit")
 	L.seed_everything(42, workers=True)
 	salary_model = SalaryModel(nb_features=salary_data_module.nb_features, lr=1e-5)
