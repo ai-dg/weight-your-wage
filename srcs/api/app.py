@@ -3,8 +3,7 @@ from fastapi import FastAPI, BackgroundTasks
 from fastapi import Request
 from fastapi import HTTPException
 import pandas as pd
-from fastapi.responses import JSONResponse
-from fastapi.responses import FileResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 import uuid
 import datetime
 from loguru import logger
@@ -64,9 +63,11 @@ def main():
 		data_module = SalaryDataModule(data="./srcs/model/datasets/survey_results_public.csv")
 		data_module.setup("EDA")
 
-		return FileResponse(
-			path="./srcs/model/EDA.html",
-			filename="EDA.html"
+		with open("./srcs/model/EDA.html") as f:
+				html_content= f.read()
+		return HTMLResponse(
+			content=html_content,
+			status_code=200
 		)
 
 	def _run_upload_minio_task(job_id: str):
