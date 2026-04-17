@@ -10,6 +10,7 @@ from lightning.pytorch.loggers import CSVLogger, MLFlowLogger
 import mlflow
 from mlflow.tracking import MlflowClient
 import lovely_tensors as lt
+import os
 
 MLFLOW_URI = "http://mlflow-server:5000"
 EXPIREMENT_NAME = "SalariOps"
@@ -25,7 +26,8 @@ def GeneralTrainer():
 
 	#Start clean
 	mlflow.end_run()
-	GeneralCleaner()
+	if not os.path.exists("./srcs/model/datasets/survey_results_cleaned.csv"):
+		GeneralCleaner()
 
 	#Setup Logger
 	mlf_logger = MLFlowLogger(

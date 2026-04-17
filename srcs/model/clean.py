@@ -12,6 +12,7 @@ from srcs.model.data_preprocessor import SalaryDataModule
 from srcs.model.features_answer import get_features
 
 def GeneralCleaner():
+    L.seed_everything(42, workers=True)
     data_module = SalaryDataModule()
     data_module.prepare_data()
     df = pd.read_csv("./srcs/model/datasets/survey_results_public.csv")
@@ -59,6 +60,7 @@ def GeneralCleaner():
             max_epochs=10, 
             accelerator="auto", 
             enable_checkpointing=False,
+            deterministic=True,
             logger=False
         )
 
@@ -93,6 +95,11 @@ def GeneralCleaner():
     print(f"Removed {num_removed} problematic rows.")
     
     df_clean.to_csv("./srcs/model/datasets/survey_results_cleaned.csv", index=False)
+
+    # Manual memory cleanup
+    del trainer, model, train_loader, val_loader
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
 if __name__ == "__main__":
     GeneralCleaner()
