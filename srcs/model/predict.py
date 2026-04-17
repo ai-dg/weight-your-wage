@@ -53,13 +53,13 @@ def GeneralInferencer(data: dict):
 		datamodule=salary_data_module
 	)
 
-    mlflow.artifacts.download_artifacts(
-        artifact_uri=f"runs:/{run_id}/rmse/rmse.json",
-        dst_path="./"
-    )
+    # mlflow.artifacts.download_artifacts(
+    #     artifact_uri=f"runs:/{run_id}/rmse/rmse.json",
+    #     dst_path="./"
+    # )
     
-    with open("rmse.json", 'r') as f:
-        rmse = float(json.load(f)['rmse'])
+    # with open("rmse.json", 'r') as f:
+    #     rmse = float(json.load(f)['rmse'])
 
     salary_array = np.expm1(
         salary_data_module.scaler_y.inverse_transform(
