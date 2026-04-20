@@ -25,4 +25,5 @@ dependencies = [
 	"loguru>=0.7.3",
 	"plotly>=6.6.0",
 	"scipy>=1.15.3",
+	"pydantic-settings>=2.13.1",
 ]
