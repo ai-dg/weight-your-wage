@@ -2,14 +2,35 @@ import fastapi
 from fastapi import FastAPI, BackgroundTasks
 from fastapi import Request
 from fastapi import HTTPException
+from fastapi import Depends
 from fastapi.responses import JSONResponse, HTMLResponse
 import uuid
 import datetime
+import os
 from loguru import logger
 from json import JSONDecodeError
 
 
 jobs = {}
+
+APP_ENV = os.getenv("APP_ENV", "dev").lower()
+ML_ENGINEER_API_KEY = os.getenv("ML_ENGINEER_API_KEY", "")
+
+
+def _require_ml_engineer(request: Request):
+	"""Require an admin key for ML-engineer-only endpoints in production."""
+	if APP_ENV != "prod":
+		return
+
+	if not ML_ENGINEER_API_KEY:
+		raise HTTPException(
+			status_code=500,
+			detail="ML_ENGINEER_API_KEY is not configured in production"
+		)
+
+	provided_key = request.headers.get("X-ML-Engineer-Key", "")
+	if provided_key != ML_ENGINEER_API_KEY:
+		raise HTTPException(status_code=403, detail="Forbidden")
 
 
 def main():
@@ -57,7 +78,7 @@ def main():
 			traceback.print_exc()
 
 	@app.get("/jobs/eda")
-	def eda():
+	def eda(_: None = Depends(_require_ml_engineer)):
 		from srcs.model.data_preprocessor import SalaryDataModule
 		data_module = SalaryDataModule(data="./srcs/model/datasets/survey_results_public.csv")
 		data_module.setup("EDA")
@@ -150,7 +171,7 @@ def main():
 
 
 	@app.post("/jobs/train")
-	def train(background_tasks: BackgroundTasks):
+	def train(background_tasks: BackgroundTasks, _: None = Depends(_require_ml_engineer)):
 		job_id = str(uuid.uuid4())
 		jobs[job_id] = {
 			"task": "train",
@@ -166,7 +187,7 @@ def main():
 
 	@app.post("/jobs/test/")
 	@app.post("/jobs/test/{version}")
-	def test(background_tasks: BackgroundTasks, version: str | None=None):
+	def test(background_tasks: BackgroundTasks, version: str | None=None, _: None = Depends(_require_ml_engineer)):
 		job_id = str(uuid.uuid4())
 		jobs[job_id] = {
 			"task": "test",
@@ -207,7 +228,7 @@ def main():
 		}
 
 	@app.post("/jobs/upload_minio")
-	def upload_minio(background_tasks: BackgroundTasks):
+	def upload_minio(background_tasks: BackgroundTasks, _: None = Depends(_require_ml_engineer)):
 		job_id = str(uuid.uuid4())
 		jobs[job_id] = {
 			"task": "upload minio",
@@ -222,7 +243,7 @@ def main():
 		}
 
 	@app.post("/jobs/import_postgresql")
-	def import_postgresql(background_tasks: BackgroundTasks):
+	def import_postgresql(background_tasks: BackgroundTasks, _: None = Depends(_require_ml_engineer)):
 		job_id = str(uuid.uuid4())
 		jobs[job_id] = {
 			"task": "import posgresql",
@@ -237,7 +258,7 @@ def main():
 		}
 
 	@app.post("/jobs/clean_data")
-	def clean_data(background_tasks: BackgroundTasks):
+	def clean_data(background_tasks: BackgroundTasks, _: None = Depends(_require_ml_engineer)):
 		job_id = str(uuid.uuid4())
 		jobs[job_id] = {
 			"task": "clean_data",
@@ -252,7 +273,7 @@ def main():
 		}
 
 	@app.post("/jobs/setup_metabase")
-	def setup_metabase(background_tasks: BackgroundTasks):
+	def setup_metabase(background_tasks: BackgroundTasks, _: None = Depends(_require_ml_engineer)):
 		job_id = str(uuid.uuid4())
 		jobs[job_id] = {
 			"task": "setup metabase",
@@ -267,7 +288,7 @@ def main():
 		}
 
 	@app.post("/jobs/data_visualization")
-	def data_visualization(background_tasks: BackgroundTasks):
+	def data_visualization(background_tasks: BackgroundTasks, _: None = Depends(_require_ml_engineer)):
 		job_id = str(uuid.uuid4())
 		jobs[job_id] = {
 			"task": "data visualization",

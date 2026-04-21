@@ -189,6 +189,8 @@ services:
       - METABASE_ADMIN_PASSWORD=${METABASE_ADMIN_PASSWORD}
       - METABASE_ADMIN_FIRST_NAME=${METABASE_ADMIN_FIRST_NAME}
       - METABASE_ADMIN_LAST_NAME=${METABASE_ADMIN_LAST_NAME}
+      - APP_ENV=${APP_ENV:-dev}
+      - ML_ENGINEER_API_KEY=${ML_ENGINEER_API_KEY}
     volumes:
       - model:/app/srcs/model/
       - api:/app/srcs/api/
