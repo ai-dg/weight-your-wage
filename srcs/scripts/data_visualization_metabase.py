@@ -489,7 +489,7 @@ def run_data_visualization_metabase():
             }
         },
         {
-            "name": "Salary Evolution by Years Code",
+            "name": "Salary Evolution by Years of Coding Experience",
             "sql": 'SELECT FLOOR("YearsCode" / 5) * 5 AS "Coding Experince", AVG("CompTotalEuro") AS "Mean Salary" FROM fact_survey WHERE "YearsCode" <= 50 GROUP BY 1 ORDER BY 1;',
             "display": "line",
             "visualization_settings": {
