@@ -1,18 +1,17 @@
-import csv
-import psycopg2
 from psycopg2 import sql
-import os
-import sys
-import json
 from pathlib import Path
 from minio import Minio
-import io
-import logging
 from fastapi import HTTPException, status
 from typing import List, Tuple
 from minio.error import S3Error
-import traceback
 from api.config import settings
+import csv
+import psycopg2
+import logging
+import traceback
+import io
+import sys
+import json
 
 
 logging.basicConfig(
@@ -26,13 +25,23 @@ csv.field_size_limit(sys.maxsize)
 
 
 def get_db_client():
+    """
+    Establishes a connection to the PostgreSQL database using configuration settings
+    defined in the application's config module.
+    -----------
+    Arguments:
+    None
+    -----------
+    Return:
+    psycopg2.extensions.connection: An active connection object to the PostgreSQL instance.
+    """
     try:
         conn = psycopg2.connect(
-        dbname=settings.postgres_db,
-        user=settings.postgres_user,
-        password=settings.postgres_password,
-        host=settings.postgres_host,
-        port=settings.postgres_port
+            dbname=settings.postgres_db,
+            user=settings.postgres_user,
+            password=settings.postgres_password,
+            host=settings.postgres_host,
+            port=settings.postgres_port
         )
         return conn
     except Exception as e:
@@ -48,6 +57,16 @@ def get_db_client():
 
 
 def get_minio_client() -> Minio:
+    """
+    Initializes a MinIO client instance using the endpoint and credentials
+    provided in the global settings.
+    -----------
+    Arguments:
+    None
+    -----------
+    Return:
+    Minio: An initialized client for interacting with S3-compatible storage.
+    """
     try:
         client = Minio(
             endpoint=settings.minio_endpoint,
@@ -69,6 +88,21 @@ def get_minio_client() -> Minio:
 
 
 def generate_staging_table(cursor, client, bucket, object_name, table_name):
+    """
+    Creates a temporary staging table in PostgreSQL by inspecting the headers
+    of a CSV file stored in MinIO. All columns are created with the TEXT type
+    to facilitate the ingestion of raw, unvalidated data.
+    -----------
+    Arguments:
+    - cursor: The database cursor to execute SQL commands.
+    - client (Minio): The MinIO client instance.
+    - bucket (str): The name of the source bucket.
+    - object_name (str): The path/name of the CSV file in the bucket.
+    - table_name (str): The name of the staging table to create.
+    -----------
+    Return:
+    None
+    """
     try:
         response = client.get_object(bucket, object_name)
         csv_text_stream = io.TextIOWrapper(response, encoding='utf-8')
@@ -76,7 +110,7 @@ def generate_staging_table(cursor, client, bucket, object_name, table_name):
         columns = next(reader)
 
         column_definitions = [
-            sql.SQL("{} TEXT").format(sql.Identifier(col)) 
+            sql.SQL("{} TEXT").format(sql.Identifier(col))
             for col in columns
         ]
 
@@ -113,16 +147,30 @@ def generate_staging_table(cursor, client, bucket, object_name, table_name):
 
 
 def fill_staging_table(cursor, client, bucket, object_name, table_name):
+    """
+    Streams data from a MinIO CSV object directly into the specified PostgreSQL
+    staging table using the high-performance 'COPY' command.
+    -----------
+    Arguments:
+    - cursor: The database cursor to execute SQL commands.
+    - client (Minio): The MinIO client instance.
+    - bucket (str): The name of the source bucket.
+    - object_name (str): The path/name of the CSV file in the bucket.
+    - table_name (str): The target staging table name.
+    -----------
+    Return:
+    None
+    """
     try:
         response = client.get_object(bucket, object_name)
-    
+
         copy_sql = sql.SQL("COPY {} FROM STDIN WITH (FORMAT CSV, HEADER, DELIMITER ',')").format(
             sql.Identifier(table_name)
         )
         cursor.copy_expert(sql=copy_sql, file=response)
     except Exception as e:
         raise HTTPException(
-            status_code=500, 
+            status_code=500,
             detail={
                 "error": "DataCopyError",
                 "table": table_name,
@@ -134,7 +182,20 @@ def fill_staging_table(cursor, client, bucket, object_name, table_name):
             response.close()
             response.release_conn()
 
+
 def create_production_table(cursor, mapping_file, table_name):
+    """
+    Initializes a production-ready table with schema definitions (column names
+    and data types) extracted from a provided JSON mapping file.
+    -----------
+    Arguments:
+    - cursor: The database cursor to execute SQL commands.
+    - mapping_file (Path): Path to the JSON file containing the schema mapping.
+    - table_name (str): The name of the production table to create.
+    -----------
+    Return:
+    None
+    """
     try:
         with open(mapping_file, 'r', encoding='utf-8') as f:
             mapping = json.load(f)
@@ -152,7 +213,7 @@ def create_production_table(cursor, mapping_file, table_name):
             )
         cursor.execute(create_query)
         logger.info(f"Production table '{table_name}' created.")
-    
+
     except json.JSONDecodeError as e:
         logger.error(f"Invalid JSON mapping file {mapping_file}: {e}")
         raise HTTPException(
@@ -176,6 +237,20 @@ def create_production_table(cursor, mapping_file, table_name):
 
 
 def clean_transfer_data(cursor, mapping_file, staging_table, prod_table):
+    """
+    Executes an 'INSERT INTO ... SELECT' operation to move data from staging
+    to production. It applies cleaning logic including whitespace trimming,
+    handling 'NA' values as NULLs, and casting TEXT columns to their final types.
+    -----------
+    Arguments:
+    - cursor: The database cursor to execute SQL commands.
+    - mapping_file (Path): Path to the JSON file used to determine casting types.
+    - staging_table (str): Source table containing raw TEXT data.
+    - prod_table (str): Target table for cleaned and typed data.
+    -----------
+    Return:
+    None
+    """
     try:
         with open(mapping_file, 'r', encoding='utf-8') as f:
             mapping = json.load(f)
@@ -201,7 +276,7 @@ def clean_transfer_data(cursor, mapping_file, staging_table, prod_table):
                 clean_part = sql.SQL("CAST(NULLIF(TRIM({}), 'NA') AS BOOLEAN)").format(source_col)
             else:
                 clean_part = sql.SQL("TRIM({})").format(source_col)
-    
+
             select_clauses.append(clean_part)
 
         query = sql.SQL("INSERT INTO {} ({}) SELECT {} FROM {}").format(
@@ -213,7 +288,7 @@ def clean_transfer_data(cursor, mapping_file, staging_table, prod_table):
 
         cursor.execute(query)
         logger.info(f"Data transferred and cleaned: {staging_table} -> {prod_table}")
-    
+
     except (psycopg2.DataError, psycopg2.IntegrityError) as e:
         logger.error(f"Data conversion failed for {prod_table}: {e.pgerror}")
         raise HTTPException(
@@ -227,6 +302,17 @@ def clean_transfer_data(cursor, mapping_file, staging_table, prod_table):
 
 
 def run_minio_import_postgresql():
+    """
+    Coordinates the full ETL pipeline: establishing connections, loading CSVs
+    from MinIO into staging tables, and transforming/cleaning data into
+    final production tables within a single database transaction.
+    -----------
+    Arguments:
+    None
+    -----------
+    Return:
+    dict: A status report indicating success and completion of the process.
+    """
     conn = None
     try:
         conn = get_db_client()
@@ -266,10 +352,12 @@ def run_minio_import_postgresql():
             return {"status": "success", "message": "ETL process completed."}
 
     except HTTPException:
-        if conn: conn.rollback()
+        if conn:
+            conn.rollback()
         raise
     except Exception as e:
-        if conn: conn.rollback()
+        if conn:
+            conn.rollback()
         logger.error(f"Critical ETL Failure: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -279,10 +367,11 @@ def run_minio_import_postgresql():
                 "traceback": traceback.format_exc().splitlines()[-3:]
             }
         )
-    
+
     finally:
         if 'conn' in locals() and conn:
             conn.close()
+
 
 if __name__ == "__main__":
     try:

@@ -1,10 +1,9 @@
-from dotenv import load_dotenv
+from fastapi import HTTPException, status
+from api.config import settings
 import os
 import requests
-from fastapi import HTTPException, status
 import traceback
 import logging
-from api.config import settings
 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -12,10 +11,20 @@ logger = logging.getLogger("metabase_creater")
 
 
 def get_metabase_client():
+    """
+    Retrieves admin credentials from the configuration settings and initializes the 
+    Metabase session by obtaining a valid session token and endpoint URL.
+    -----------
+    Arguments:
+    None
+    -----------
+    Return:
+    tuple: A pair containing the session_id (str) and the metabase_url (str).
+    """
     username = settings.metabase_admin_email
     password = settings.metabase_admin_password
     metabase_url = settings.metabase_url
-        
+
     if not all([username, password, metabase_url]):
         msg = "Missing environment variables: METABASE_ADMIN_EMAIL, METABASE_ADMIN_PASSWORD, or METABASE_URL."
         logger.critical(msg)
@@ -41,7 +50,20 @@ def get_metabase_client():
             }
         )
 
+
 def get_session_token(username, password, metabase_url):
+    """
+    Authenticates against the Metabase /session endpoint using admin credentials 
+    to retrieve a session identifier required for all subsequent API requests.
+    -----------
+    Arguments:
+    - username (str): Admin email for Metabase.
+    - password (str): Admin password for Metabase.
+    - metabase_url (str): The base URL of the Metabase instance.
+    -----------
+    Return:
+    str: The unique session ID (token).
+    """
     payload = {"username": username, "password": password}
     try:
         response = requests.post(f"{metabase_url}/session", json=payload)
@@ -58,18 +80,31 @@ def get_session_token(username, password, metabase_url):
             }
         )
 
-def get_database_id(headers, metabase_url,db_name="PostgreSQL"):
+
+def get_database_id(headers, metabase_url, db_name="PostgreSQL"):
+    """
+    Queries the Metabase instance to find the internal unique identifier (ID)
+    of a connected database, identified by its display name.
+    -----------
+    Arguments:
+    - headers (dict): HTTP headers including the session token.
+    - metabase_url (str): The base URL of the Metabase instance.
+    - db_name (str): The name of the database as registered in Metabase.
+    -----------
+    Return:
+    int: The internal ID of the requested database.
+    """
     try:
         response = requests.get(f"{metabase_url}/database", headers=headers)
         response.raise_for_status()
         databases = response.json()
 
         db_list = databases['data'] if isinstance(databases, dict) and 'data' in databases else databases
-        
+
         for db in db_list:
             if db['name'] == db_name:
                 return db['id']
-    
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={
@@ -87,7 +122,21 @@ def get_database_id(headers, metabase_url,db_name="PostgreSQL"):
             }
         )
 
+
 def delete_old_cards(headers, metabase_url, visualizations):
+    """
+    Scans the existing Metabase collection and archives any questions (cards)
+    that share names with the visualizations currently being deployed to
+    prevent duplication and conflicts.
+    -----------
+    Arguments:
+    - headers (dict): HTTP headers including the session token.
+    - metabase_url (str): The base URL of the Metabase instance.
+    - visualizations (list): A list of dictionaries defining the target visualizations.
+    -----------
+    Return:
+    None
+    """
     try:
         response = requests.get(f"{metabase_url}/card", headers=headers)
         response.raise_for_status()
@@ -100,7 +149,7 @@ def delete_old_cards(headers, metabase_url, visualizations):
                 card_id = card["id"]
                 archive_res = requests.put(
                     f"{metabase_url}/card/{card_id}",
-                    headers=headers, 
+                    headers=headers,
                     json={"archived": True},
                     timeout=10
                 )
@@ -118,6 +167,20 @@ def delete_old_cards(headers, metabase_url, visualizations):
 
 
 def create_cards(db_id, metabase_url, headers, visualizations):
+    """
+    Iterates through a list of visualization definitions to create new native
+    SQL cards in Metabase, applying specific display and visualization settings
+    for each chart type.
+    -----------
+    Arguments:
+    - db_id (int): The ID of the database to query.
+    - metabase_url (str): The base URL of the Metabase instance.
+    - headers (dict): HTTP headers including the session token.
+    - visualizations (list): Definitions including names, SQL queries, and viz settings.
+    -----------
+    Return:
+    dict: A summary containing the status and the list of names of successfully created cards.
+    """
     results = []
     try:
         for viz in visualizations:
@@ -141,7 +204,7 @@ def create_cards(db_id, metabase_url, headers, visualizations):
             logger.info(f"Card '{viz['name']}' created.")
 
         return {"status": "success", "created_cards": results}
-    
+
     except requests.exceptions.RequestException as e:
         logger.error(f"Metabase Card Creation Failed: {e}")
         raise HTTPException(
@@ -152,14 +215,27 @@ def create_cards(db_id, metabase_url, headers, visualizations):
             }
         )
 
+
 def get_card_mapping(session_id, metabase_url):
+    """
+    Retrieves the complete list of cards from Metabase and builds a dictionary
+    mapping each card name to its internal ID for easy lookup during dashboard
+    assembly.
+    -----------
+    Arguments:
+    - session_id (str): The active Metabase session token.
+    - metabase_url (str): The base URL of the Metabase instance.
+    -----------
+    Return:
+    dict: A mapping of {card_name: card_id}.
+    """
     headers = {"X-Metabase-Session": session_id}
-    
+
     try:
         response = requests.get(f"{metabase_url}/card", headers=headers)
         response.raise_for_status()
         cards = response.json()
-        
+
         mapping = {card['name']: card['id'] for card in cards}
 
         return mapping
@@ -174,18 +250,31 @@ def get_card_mapping(session_id, metabase_url):
             }
         )
 
+
 def get_dashboard_id(session_id, name, metabase_url):
+    """
+    Searches for an existing dashboard by its name and returns its internal
+    identifier if it exists.
+    -----------
+    Arguments:
+    - session_id (str): The active Metabase session token.
+    - name (str): The display name of the dashboard to find.
+    - metabase_url (str): The base URL of the Metabase instance.
+    -----------
+    Return:
+    int or None: The dashboard ID if found, otherwise None.
+    """
     headers = {"X-Metabase-Session": session_id}
     try:
         res = requests.get(f"{metabase_url}/dashboard", headers=headers)
         res.raise_for_status()
         dashboards = res.json()
-    
+
         for dashboard in dashboards:
             if dashboard['name'] == name:
                 return dashboard['id']
         return None
-    
+
     except requests.exceptions.RequestException as e:
         logger.error(f"Metabase Dashboard Identification Failed: {e}")
         raise HTTPException(
@@ -198,6 +287,19 @@ def get_dashboard_id(session_id, name, metabase_url):
 
 
 def create_dashboard(session_id, headers, metabase_url):
+    """
+    Creates multiple themed dashboards and populates them with a specific
+    grid layout of cards. It calculates positions (row/col) and sizes
+    to organize the analytical visualizations into a coherent UI.
+    -----------
+    Arguments:
+    - session_id (str): The active Metabase session token.
+    - headers (dict): HTTP headers including the session token.
+    - metabase_url (str): The base URL of the Metabase instance.
+    -----------
+    Return:
+    None
+    """
     payload = [
         {
             "name": "Work Env",
@@ -209,7 +311,6 @@ def create_dashboard(session_id, headers, metabase_url):
         }
     ]
 
-    dashboard_names = [p["name"] for p in payload]
     dash_ids = []
 
     try:
@@ -217,7 +318,7 @@ def create_dashboard(session_id, headers, metabase_url):
             name = pay["name"]
             existing_id = get_dashboard_id(session_id, name, metabase_url)
             if existing_id:
-                logger.info(f"Dashboard {val} already exist (ID: P{dash_id})")
+                logger.info(f"Dashboard {name} already exist (ID: P{existing_id})")
                 dash_ids.append(existing_id)
             else:
                 response = requests.post(
@@ -229,7 +330,7 @@ def create_dashboard(session_id, headers, metabase_url):
                 new_id = response.json().get("id")
                 logger.info(f"Dashboard '{name}' created successfully.")
                 dash_ids.append(new_id)
-    
+
     except requests.exceptions.RequestException as e:
         logger.error(f"Metabase Dashboard Creation Failed: {e}")
         raise HTTPException(
@@ -241,8 +342,8 @@ def create_dashboard(session_id, headers, metabase_url):
         )
 
     mapping = get_card_mapping(session_id, metabase_url)
-    
-    payload = [ 
+
+    payload = [
         {
             "cards": [
                 {
@@ -335,20 +436,30 @@ def create_dashboard(session_id, headers, metabase_url):
             response.raise_for_status()
 
     except requests.exceptions.RequestException as e:
-            logger.error(f"Metabase Dashboard Graph Creation Failed: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail={
-                    "error": "MetabaseDashboardGraphCreationError",
-                    "details": str(e)
-                }
-            )
-
+        logger.error(f"Metabase Dashboard Graph Creation Failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={
+                "error": "MetabaseDashboardGraphCreationError",
+                "details": str(e)
+            }
+        )
 
 
 def run_data_visualization_metabase():
+    """
+    Main orchestration function that executes the full visualization pipeline:
+    authenticating, identifying the source DB, cleaning legacy cards,
+    creating new SQL-based charts, and building the final dashboards.
+    -----------
+    Arguments:
+    None
+    -----------
+    Return:
+    None
+    """
     session_id, metabase_url = get_metabase_client()
-    
+
     headers = {
         "Content-Type": "application/json",
         "X-Metabase-Session": session_id
@@ -382,8 +493,8 @@ def run_data_visualization_metabase():
             "sql": 'SELECT FLOOR("YearsCode" / 5) * 5 AS "Coding Experince", AVG("CompTotalEuro") AS "Mean Salary" FROM fact_survey WHERE "YearsCode" <= 50 GROUP BY 1 ORDER BY 1;',
             "display": "line",
             "visualization_settings": {
-                "graph.dimensions": ["Coding Experince"],  
-                "graph.metrics": ["Mean Salary"],        
+                "graph.dimensions": ["Coding Experince"],
+                "graph.metrics": ["Mean Salary"],
                 "graph.show_values": True,
                 "line.interpolate": "monotone",
                 "line.marker_enabled": True,
@@ -440,6 +551,6 @@ def run_data_visualization_metabase():
 
 if __name__ == "__main__":
     try:
-        run_init_metabase()
+        run_data_visualization_metabase()
     except HTTPException as e:
         print(f"Error {e.status_code}: {e.detail}")

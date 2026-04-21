@@ -1,9 +1,8 @@
-import os
+from fastapi import HTTPException, status
+from api.config import settings
 import time
 import requests
-from fastapi import HTTPException, status
 import logging
-from api.config import settings
 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -11,6 +10,16 @@ logger = logging.getLogger("metabase_setter")
 
 
 def wait_for_metabase():
+    """
+    Blocks execution and polls the Metabase health endpoint at regular intervals
+    until the service is fully online and responsive.
+    -----------
+    Arguments:
+    None
+    -----------
+    Return:
+    None
+    """
     metabase_url = settings.metabase_url
     if not metabase_url:
         msg = "Missing environment variable: METABASE_URL."
@@ -33,7 +42,19 @@ def wait_for_metabase():
             pass
         time.sleep(5)
 
+
 def get_setup_token():
+    """
+    Retrieves the temporary 'setup-token' from Metabase session properties.
+    This token is required for the initial configuration and is only
+    available if the instance hasn't been set up yet.
+    -----------
+    Arguments:
+    None
+    -----------
+    Return:
+    str | None: The setup token string if available, or None if the instance is already configured.
+    """
     metabase_url = settings.metabase_url
     if not metabase_url:
         msg = "Missing environment variable: METABASE_URL."
@@ -63,7 +84,18 @@ def get_setup_token():
                 "details": str(e)}
         )
 
+
 def perform_setup(token):
+    """
+    Executes the first-time setup for Metabase by creating the primary admin
+    account and defining site-wide preferences such as language and site name.
+    -----------
+    Arguments:
+    - token (str): The valid setup token obtained from the Metabase instance.
+    -----------
+    Return:
+    str: The session ID (token) for the newly created administrator account.
+    """
     first_name = settings.metabase_admin_first_name
     last_name = settings.metabase_admin_last_name
     email = settings.metabase_admin_email
@@ -80,7 +112,7 @@ def perform_setup(token):
                 "message": msg
                 }
         )
-                
+
     payload = {
         "token": token,
         "user": {
@@ -88,7 +120,7 @@ def perform_setup(token):
             "last_name": last_name,
             "email": email,
             "password": password,
-            
+
         },
         "prefs": {
             "site_name": "Data Analytics Stack",
@@ -96,7 +128,7 @@ def perform_setup(token):
             "allow_tracking": False
         }
     }
-    
+
     try:
         logger.info(f"Initializing the admin ({email})...")
         response = requests.post(f"{metabase_url}/setup", json=payload)
@@ -104,7 +136,7 @@ def perform_setup(token):
         session_id = response.json().get("id")
         logger.info("User create sucessfully.")
         return session_id
-    
+
     except requests.exceptions.RequestException as e:
         logger.error(f"Metabase User Creation Failed: {e}")
         raise HTTPException(
@@ -115,10 +147,20 @@ def perform_setup(token):
             }
         )
 
+
 def connect_database(session_id):
+    """
+    Registers the application's PostgreSQL database as a data source within
+    Metabase using an authenticated admin session.
+    -----------
+    Arguments:
+    - session_id (str): A valid Metabase session token with admin privileges.
+    -----------
+    Return:
+    None
+    """
     headers = {"X-Metabase-Session": session_id}
     metabase_url = settings.metabase_url
-
 
     db_payload = {
         "name": "PostgreSQL",
@@ -149,6 +191,17 @@ def connect_database(session_id):
 
 
 def run_setup_metabase():
+    """
+    Orchestrates the entire Metabase initialization workflow: waits for
+    availability, fetches the setup token, creates the admin, and connects
+    the PostgreSQL analytics database.
+    -----------
+    Arguments:
+    None
+    -----------
+    Return:
+    None
+    """
     wait_for_metabase()
     token = get_setup_token()
     if token:
