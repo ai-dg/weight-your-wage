@@ -10,7 +10,7 @@ import torch
 from torch.utils.data import DataLoader, TensorDataset
 import lightning as L
 
-from sklearn.model_selection import train_test_split 
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
@@ -21,274 +21,295 @@ from srcs.model.features_answer import get_features
 
 class SalaryDataModule(L.LightningDataModule):
 
-	def __init__(self, data=None, artifact_path=None):
-		super().__init__()
-		self.data = data
-		self.batch_size = 32
-		self.nb_features = 0
-		self.fit_encoder_filename = "fit_encoder.joblib"
-		self.target_scaler_filename = "target_scaler.joblib"
-		self.artifact_path = artifact_path
-		self.df = None
+    def __init__(self, data=None, artifact_path=None):
+        """Initialize the salary data module with optional input data and artifact storage path.
 
-	def prepare_data(self):
-		pass
+        Args:
+            data: Path or DataFrame used for training, validation, or prediction.
+            artifact_path: Directory where fitted transformers and scalers are saved and loaded.
+        """
+        super().__init__()
+        self.data = data
+        self.batch_size = 32
+        self.nb_features = 0
+        self.fit_encoder_filename = "fit_encoder.joblib"
+        self.target_scaler_filename = "target_scaler.joblib"
+        self.artifact_path = artifact_path
+        self.df = None
 
-	def setup(self, stage:str):
-		if stage == 'EDA':
-			self.df = self.data if isinstance(self.data, pd.DataFrame) else pd.read_csv(self.data)
-			self.df = self.df[get_features()].copy()
-			self.update_currency()
-			self.df.to_csv("./srcs/model/datasets/data_EDA.csv")
-			EDA = profile = ProfileReport(self.df, title="Data (Before Preprocessing)")
-			return profile.to_file("./srcs/model/EDA.html")
+    def prepare_data(self):
+        """Placeholder for Lightning prepare_data step.
 
-		if stage == 'fit':
-			self.df = self.data if isinstance(self.data, pd.DataFrame) else pd.read_csv(self.data)
-			if "CompTotalEuro" not in self.df :
-				self.df = self.df[get_features()].copy()
-				self.update_currency()
-			self.init_encoder() #Create Columns Transformers
-			self.fit_pipeline()
+        This method is intentionally empty because all data loading and preprocessing
+        is handled in `setup` and helper methods.
+        """
+        pass
 
-		elif stage == 'test':
-			self.X_test = pd.read_csv("./srcs/model/datasets/X_test.csv")
-			self.y_test = pd.read_csv("./srcs/model/datasets/y_test.csv")
-			self.ct = joblib.load(os.path.join(self.artifact_path, self.fit_encoder_filename))
-			self.scaler_y = joblib.load(os.path.join(self.artifact_path, self.target_scaler_filename))
-			self.X_test_scaled = self.ct.transform(self.X_test)
-			self.y_test_log = np.log1p(self.y_test)
-			logger.info(f"y_test : {self.y_test_log.shape}")
-			if self.y_test_log.shape[1] > 1:
-				self.y_test_log = self.y_test_log[:,1]
-			self.y_test_scaled = self.scaler_y.transform(self.y_test_log)
+    def setup(self, stage:str):
+        """Prepare the dataset for the specified Lightning stage.
 
-		elif stage == 'predict':
-			logger.info("data: ", self.data)
-			self.df_predict = pd.DataFrame([self.data])
-			logger.info("predict_df: ", self.df_predict)
-			self.ct = joblib.load(self.fit_encoder_filename)
-			self.scaler_y = joblib.load(self.target_scaler_filename)
-			self.X_predict_scaled = self.ct.transform(self.df_predict)
+        Args:
+            stage: One of 'EDA', 'fit', 'test', or 'predict'.
+        """
+        if stage == 'EDA':
+            self.df = self.data if isinstance(self.data, pd.DataFrame) else pd.read_csv(self.data)
+            self.df = self.df[get_features()].copy()
+            self.update_currency()
+            self.df.to_csv("./srcs/model/datasets/data_EDA.csv")
+            EDA = profile = ProfileReport(self.df, title="Data (Before Preprocessing)")
+            return profile.to_file("./srcs/model/EDA.html")
 
-	def __str__(self):
-		resume = f"{self.df}"
-		columns = f"{self.df.columns}"
-		return resume + "\n" + columns
+        if stage == 'fit':
+            self.df = self.data if isinstance(self.data, pd.DataFrame) else pd.read_csv(self.data)
+            if "CompTotalEuro" not in self.df :
+                self.df = self.df[get_features()].copy()
+                self.update_currency()
+            self.init_encoder() #Create Columns Transformers
+            self.fit_pipeline()
 
-	######################################################################
-	##### 						INIT ENCODER						 #####
-	######################################################################
+        elif stage == 'test':
+            self.X_test = pd.read_csv("./srcs/model/datasets/X_test.csv")
+            self.y_test = pd.read_csv("./srcs/model/datasets/y_test.csv")
+            self.ct = joblib.load(os.path.join(self.artifact_path, self.fit_encoder_filename))
+            self.scaler_y = joblib.load(os.path.join(self.artifact_path, self.target_scaler_filename))
+            self.X_test_scaled = self.ct.transform(self.X_test)
+            self.y_test_log = np.log1p(self.y_test)
+            logger.info(f"y_test : {self.y_test_log.shape}")
+            if self.y_test_log.shape[1] > 1:
+                self.y_test_log = self.y_test_log[:,1]
+            self.y_test_scaled = self.scaler_y.transform(self.y_test_log)
 
-	def init_encoder(self):
-		need_numerical_encoding = ["WorkExp", "YearsCode"]
+        elif stage == 'predict':
+            logger.info("data: ", self.data)
+            self.df_predict = pd.DataFrame([self.data])
+            logger.info("predict_df: ", self.df_predict)
+            self.ct = joblib.load(self.fit_encoder_filename)
+            self.scaler_y = joblib.load(self.target_scaler_filename)
+            self.X_predict_scaled = self.ct.transform(self.df_predict)
 
-		need_binary_encoding = [
-								"LanguageChoice",
-								"DatabaseChoice",
-								"PlatformChoice",
-								"WebframeChoice",
-								"DevEnvsChoice",
-								"AIModelsChoice"
-								]
+    def __str__(self):
+        """Return a string summary containing the current dataframe and its columns."""
+        resume = f"{self.df}"
+        columns = f"{self.df.columns}"
+        return resume + "\n" + columns
 
-		#Ordinal Encode every Nominal Features by order of importance
-		need_ordinal_encoding = ["EdLevel", "AISelect"]
+    ######################################################################
+    ##### 						INIT ENCODER						 #####
+    ######################################################################
 
-		#One hot encode every Nominal Features with no order importance
-		need_hot_encoding = [
-							"MainBranch",
-							"Age",
-							"Employment",
-							"DevType",
-							"OrgSize",
-							"ICorPM",
-							"RemoteWork",
-							"Industry",
-							"AIAgents",
-							"LearnCodeAI"
-							]
+    def init_encoder(self):
+        """Create and store the preprocessing column transformer for feature encoding.
 
-		need_multi_label_encoding = [
-									"LearnCode",
-									"LanguageHaveWorkedWith",
-									"DatabaseHaveWorkedWith",
-									"PlatformHaveWorkedWith",
-									"WebframeHaveWorkedWith",
-									"DevEnvsHaveWorkedWith"
-									]
-		
-		need_target_encoding = ["Country"]
+        This method defines pipelines for numerical, binary, ordinal, one-hot, multi-label,
+        and target encoding, then combines them into a single ColumnTransformer.
+        """
+        need_numerical_encoding = ["WorkExp", "YearsCode"]
 
-		binary_pipeline = Pipeline([
-			('imputer', SimpleImputer(strategy='constant', fill_value='No')),
-			('encoder', OneHotEncoder(drop='first', sparse_output=False, handle_unknown='error', dtype=int))
-		])
-		num_pipeline = Pipeline([
-			('imputer', SimpleImputer(strategy='median')),
-			('scaler', StandardScaler())
-			])
+        need_binary_encoding = [
+                                "LanguageChoice",
+                                "DatabaseChoice",
+                                "PlatformChoice",
+                                "WebframeChoice",
+                                "DevEnvsChoice",
+                                "AIModelsChoice"
+                                ]
 
-		target_pipeline = Pipeline([
-			('encoder', TargetEncoder(smoothing=10.0)),
-			('scaler', StandardScaler())
-		])
+        #Ordinal Encode every Nominal Features by order of importance
+        need_ordinal_encoding = ["EdLevel", "AISelect"]
 
-		self.ct = ColumnTransformer(transformers=[
-			('numerical', num_pipeline, need_numerical_encoding),
-			('binary', binary_pipeline, need_binary_encoding),
-			('ordinal', SmartOrdinalEncoder(), need_ordinal_encoding),
-			('one_hot', SmartOneHotEncoder(), need_hot_encoding),
-			('multi_label', SmartMultilabelEncoder(), need_multi_label_encoding),
-			('target', target_pipeline, need_target_encoding),
-		])
+        #One hot encode every Nominal Features with no order importance
+        need_hot_encoding = [
+                            "MainBranch",
+                            "Age",
+                            "Employment",
+                            "DevType",
+                            "OrgSize",
+                            "ICorPM",
+                            "RemoteWork",
+                            "Industry",
+                            "AIAgents",
+                            "LearnCodeAI"
+                            ]
 
-	
-	def update_currency(self):
-		"""
-			Convert CompTotal to Euro, then drop CompTotal and Currency features.
+        need_multi_label_encoding = [
+                                    "LearnCode",
+                                    "LanguageHaveWorkedWith",
+                                    "DatabaseHaveWorkedWith",
+                                    "PlatformHaveWorkedWith",
+                                    "WebframeHaveWorkedWith",
+                                    "DevEnvsHaveWorkedWith"
+                                    ]
+        
+        need_target_encoding = ["Country"]
 
-			Outliers are filtered out.
-		"""
+        binary_pipeline = Pipeline([
+            ('imputer', SimpleImputer(strategy='constant', fill_value='No')),
+            ('encoder', OneHotEncoder(drop='first', sparse_output=False, handle_unknown='error', dtype=int))
+        ])
+        num_pipeline = Pipeline([
+            ('imputer', SimpleImputer(strategy='median')),
+            ('scaler', StandardScaler())
+            ])
 
-		self.df = self.df.dropna(subset="CompTotal")
-		self.df.loc[:, "Currency"] = self.df["Currency"].apply(lambda str : str[:3])
+        target_pipeline = Pipeline([
+            ('encoder', TargetEncoder(smoothing=10.0)),
+            ('scaler', StandardScaler())
+        ])
 
-		Salary_min = 1000
-		# Salary_max = 999999
-		Salary_max = 350_000
+        self.ct = ColumnTransformer(transformers=[
+            ('numerical', num_pipeline, need_numerical_encoding),
+            ('binary', binary_pipeline, need_binary_encoding),
+            ('ordinal', SmartOrdinalEncoder(), need_ordinal_encoding),
+            ('one_hot', SmartOneHotEncoder(), need_hot_encoding),
+            ('multi_label', SmartMultilabelEncoder(), need_multi_label_encoding),
+            ('target', target_pipeline, need_target_encoding),
+        ])
 
-		# Use float64 limit as a ceiling
-		FLOAT_MAX = np.finfo(np.float64).max
+    
+    def update_currency(self):
+        """
+            Convert CompTotal to Euro, then drop CompTotal and Currency features.
 
-		currency_table  = pd.read_csv("./srcs/model/datasets/currency_2025.csv")
+            Outliers are filtered out.
+        """
 
-		# Convert CompTotalEuro with its attached currency
-		series_rate = currency_table.set_index("currency")['Value']
-		rate = self.df["Currency"].map(series_rate)
+        self.df = self.df.dropna(subset="CompTotal")
+        self.df.loc[:, "Currency"] = self.df["Currency"].apply(lambda str : str[:3])
 
-		is_safe = (rate.notna()) & (rate > 0) & (self.df["CompTotal"] < (FLOAT_MAX / rate))
+        Salary_min = 1000
+        Salary_max = 350_000
 
-		#Calculate Euro Value for safe input
-		self.df.loc[:, "CompTotalEuro"] = np.where(
-											is_safe, 
-											self.df["CompTotal"] * rate, 
-											np.nan
-											)
+        currency_table  = pd.read_csv("./srcs/model/datasets/currency_2025.csv")
+        series_rate = currency_table.set_index("currency")['Value']
+        rate = self.df["Currency"].map(series_rate)
 
-		#Spot Invalid Value and drop them
-		mask = (self.df["CompTotalEuro"] >= Salary_min) & (self.df["CompTotalEuro"] <= Salary_max)
-		self.df = self.df[mask].copy()
-		self.df.to_csv("./srcs/model/datasets/result_clean.csv")
-		# Delete the features Currency and CompTotal
-		self.df.drop(columns=["Currency", "CompTotal"], inplace=True)
-		return self.df
+        FLOAT_MAX = np.finfo(np.float64).max
+        is_safe = (rate.notna()) & (rate > 0) & (self.df["CompTotal"] < (FLOAT_MAX / rate))
 
-	def split_data(self, X: pd.DataFrame, y: pd.DataFrame, ratio_test : float = 0.1, ratio_val : float = 0.20, seed : int = 42):
+        self.df.loc[:, "CompTotalEuro"] = np.where(
+                                            is_safe, 
+                                            self.df["CompTotal"] * rate, 
+                                            np.nan
+                                            )
 
-		X_split, X_test, y_split, y_test = train_test_split(X, y, random_state=seed, test_size=ratio_test, shuffle=True)
+        mask = (self.df["CompTotalEuro"] >= Salary_min) & (self.df["CompTotalEuro"] <= Salary_max)
+        self.df = self.df[mask].copy()
+        self.df.to_csv("./srcs/model/datasets/result_clean.csv")
+        self.df.drop(columns=["Currency", "CompTotal"], inplace=True)
 
-		self.X_test = X_test
-		self.y_test = y_test.to_frame()
-		X_test.to_csv("./srcs/model/datasets/X_test.csv", index=False)
-		y_test.to_csv("./srcs/model/datasets/y_test.csv", index=False)
+        return self.df
 
-		X_train, X_val, y_train, y_val = train_test_split(X_split, y_split, random_state=seed, test_size=ratio_val, shuffle=True)
+    def split_data(self, X: pd.DataFrame, y: pd.DataFrame, ratio_test : float = 0.1, ratio_val : float = 0.20, seed : int = 42):
+        """Split features and target into train, validation, and test sets.
 
-		self.X_train = X_train
-		self.X_val = X_val
-		self.y_train = y_train.to_frame()
-		self.y_val = y_val.to_frame()
+        Args:
+            X: Feature dataframe.
+            y: Target series or dataframe.
+            ratio_test: Fraction of the data reserved for the test split.
+            ratio_val: Fraction of the remaining data reserved for validation.
+            seed: Random seed for reproducible splits.
+        """
 
-	######################################################################
-	##### 						UTILS								 #####
-	######################################################################
+        X_split, X_test, y_split, y_test = train_test_split(X, y, random_state=seed, test_size=ratio_test, shuffle=True)
 
-	def extract_target(self):
-		"""
-		Split the preprocessed dataframe into target and feature matrices.
+        self.X_test = X_test
+        self.y_test = y_test.to_frame()
+        X_test.to_csv("./srcs/model/datasets/X_test.csv", index=False)
+        y_test.to_csv("./srcs/model/datasets/y_test.csv", index=False)
 
-		Returns:
-			tuple[pd.Series, pd.DataFrame]:
-				A tuple containing:
-				- y: The target salary column ("CompTotalEuro").
-				- X: The feature dataframe with "CompTotalEuro" removed.
-		"""
-		y = self.df.loc[:,"CompTotalEuro"]
-		X = self.df.drop("CompTotalEuro", axis=1)
-		return X, y
+        X_train, X_val, y_train, y_val = train_test_split(X_split, y_split, random_state=seed, test_size=ratio_val, shuffle=True)
 
-	######################################################################
-	##### 					FIT PIPELINE							 #####
-	######################################################################
+        self.X_train = X_train
+        self.X_val = X_val
+        self.y_train = y_train.to_frame()
+        self.y_val = y_val.to_frame()
 
-	def fit_pipeline(self):
-		# self.init_encoder()
-		X, y  = self.extract_target() #Separe X and Y
-		self.split_data(X, y) #Split between train, val, test
+    ######################################################################
+    ##### 						UTILS								 #####
+    ######################################################################
 
-		#Transform + Scaling (on X and on y) (normalize)
-		self.X_train_scaled = self.ct.fit_transform(self.X_train, self.y_train)
+    def extract_target(self):
+        """
+        Split the preprocessed dataframe into target and feature matrices.
 
-		feature_names = self.ct.get_feature_names_out()
+        Returns:
+            tuple[pd.Series, pd.DataFrame]:
+                A tuple containing:
+                - y: The target salary column ("CompTotalEuro").
+                - X: The feature dataframe with "CompTotalEuro" removed.
+        """
+        y = self.df.loc[:,"CompTotalEuro"]
+        X = self.df.drop("CompTotalEuro", axis=1)
+        return X, y
 
-		self.X_val_scaled = self.ct.transform(self.X_val)
+    ######################################################################
+    ##### 					FIT PIPELINE							 #####
+    ######################################################################
 
-		self.nb_features = self.X_train_scaled.shape[1]
+    def fit_pipeline(self):
+        """Fit preprocessing pipelines and scale training and validation data.
 
-			#Scaling on y
-		self.scaler_y = StandardScaler()
-				#Train dataset
-		self.y_train_log = np.log1p(self.y_train)
-		self.y_train_scaled = self.scaler_y.fit_transform(self.y_train_log)
-				#Validation dataset
-		self.y_val_log = np.log1p(self.y_val)
-		self.y_val_scaled = self.scaler_y.transform(self.y_val_log)
-		#End
-		logger.info(f"y_train : {self.y_train_log.shape}")
+        This method extracts the target, splits data, fits the transformer on training data,
+        and standardizes the salary target for training and validation.
+        """
+        # self.init_encoder()
+        X, y  = self.extract_target() #Separe X and Y
+        self.split_data(X, y) #Split between train, val, test
 
-		joblib.dump(self.ct, self.fit_encoder_filename)
-		joblib.dump(self.scaler_y, self.target_scaler_filename)
+        #Transform + Scaling (on X and on y) (normalize)
+        self.X_train_scaled = self.ct.fit_transform(self.X_train, self.y_train)
 
-	######################################################################
-	##### 						DATALOADER							 #####
-	######################################################################
+        feature_names = self.ct.get_feature_names_out()
 
-	def train_dataloader(self):
-		dataset = TensorDataset(
-			torch.tensor(self.X_train_scaled, dtype=torch.float32),
-			torch.tensor(self.y_train_scaled, dtype=torch.float32),
-			)
-		return DataLoader(dataset, batch_size=self.batch_size)
+        self.X_val_scaled = self.ct.transform(self.X_val)
 
-	def predict_dataloader(self):
-		dataset = TensorDataset(
-			torch.tensor(self.X_predict_scaled, dtype=torch.float32),
-			)
-		return DataLoader(dataset, batch_size=self.batch_size)
+        self.nb_features = self.X_train_scaled.shape[1]
 
-	def val_dataloader(self):
-		dataset = TensorDataset(
-			torch.tensor(self.X_val_scaled, dtype=torch.float32),
-			torch.tensor(self.y_val_scaled, dtype=torch.float32),
-			)
-		return DataLoader(dataset, batch_size=self.batch_size)
+            #Scaling on y
+        self.scaler_y = StandardScaler()
+                #Train dataset
+        self.y_train_log = np.log1p(self.y_train)
+        self.y_train_scaled = self.scaler_y.fit_transform(self.y_train_log)
+                #Validation dataset
+        self.y_val_log = np.log1p(self.y_val)
+        self.y_val_scaled = self.scaler_y.transform(self.y_val_log)
+        #End
+        logger.info(f"y_train : {self.y_train_log.shape}")
 
-	def test_dataloader(self):
-		dataset = TensorDataset(
-			torch.tensor(self.X_test_scaled, dtype=torch.float32),
-			torch.tensor(self.y_test_scaled, dtype=torch.float32),
-			)
-		return DataLoader(dataset, batch_size=self.batch_size)
+        joblib.dump(self.ct, self.fit_encoder_filename)
+        joblib.dump(self.scaler_y, self.target_scaler_filename)
 
+    ######################################################################
+    ##### 						DATALOADER							 #####
+    ######################################################################
 
-def main():
-	SalaryData = SalaryDataModule("./srcs/model/datasets/survey_results_public.csv")
-	SalaryData.df.to_csv("Temp.csv")
-	SalaryData.run_pipeline()
-	with np.printoptions(threshold=np.inf):
-		print(f"Dataset X train: {SalaryData.X_train_scaled}")
-	print(f"Dataset y train: {SalaryData.y_train_scaled}")
+    def train_dataloader(self):
+        """Return a DataLoader for the training dataset."""
+        dataset = TensorDataset(
+            torch.tensor(self.X_train_scaled, dtype=torch.float32),
+            torch.tensor(self.y_train_scaled, dtype=torch.float32),
+            )
+        return DataLoader(dataset, batch_size=self.batch_size)
 
-if __name__ == "__main__":
-    main()
+    def predict_dataloader(self):
+        """Return a DataLoader for prediction inputs."""
+        dataset = TensorDataset(
+            torch.tensor(self.X_predict_scaled, dtype=torch.float32),
+            )
+        return DataLoader(dataset, batch_size=self.batch_size)
+
+    def val_dataloader(self):
+        """Return a DataLoader for the validation dataset."""
+        dataset = TensorDataset(
+            torch.tensor(self.X_val_scaled, dtype=torch.float32),
+            torch.tensor(self.y_val_scaled, dtype=torch.float32),
+            )
+        return DataLoader(dataset, batch_size=self.batch_size)
+
+    def test_dataloader(self):
+        """Return a DataLoader for the test dataset."""
+        dataset = TensorDataset(
+            torch.tensor(self.X_test_scaled, dtype=torch.float32),
+            torch.tensor(self.y_test_scaled, dtype=torch.float32),
+            )
+        return DataLoader(dataset, batch_size=self.batch_size)

@@ -6,28 +6,44 @@ import lightning as L
 from sklearn.preprocessing import StandardScaler
 from cleanlab import Datalab
 
-# Your custom imports
 from srcs.model.salary_model import SalaryModel
 from srcs.model.data_preprocessor import SalaryDataModule
 from srcs.model.features_answer import get_features
 
-def GeneralCleaner():
+def load_and_preprocess_data():
+    """Load raw survey data, initialize the preprocessing module, and extract features and target.
+
+    Returns:
+        tuple: A tuple containing the initialized SalaryDataModule, feature dataframe X, and target series y.
+    """
     df = pd.read_csv("./srcs/model/datasets/survey_results_public.csv")
     data_module = SalaryDataModule()
     data_module.df = df[get_features()].copy()
-    data_module.cleaning_data()
+    data_module.update_currency()
     data_module.init_encoder()
     X, y = data_module.extract_target()
-    
-    oos_predictions = np.zeros(len(y))
+    return (data_module, X, y)
+
+def perform_cross_validation(X, y, data_module):
+    """Run 5-fold cross-validation and collect out-of-sample predictions.
+
+    Args:
+        X: Feature dataframe.
+        y: Target series.
+        data_module: SalaryDataModule with preprocessing setup.
+
+    Returns:
+        numpy.ndarray: Out-of-sample predictions aligned with the original data order.
+    """
+    out_of_sample_predictions = np.zeros(len(y))
     
     indices = np.arange(X.shape[0])
-    chunks = np.array_split(indices, 5)
+    data_chunks = np.array_split(indices, 5)
 
     for i in range(5):
         print(f"--- Training Fold {i+1}/5 ---")
-        val_idx = chunks[i]
-        train_idx = np.concatenate([chunks[j] for j in range(5) if j != i])
+        val_idx = data_chunks[i]
+        train_idx = np.concatenate([data_chunks[j] for j in range(5) if j != i])
 
         # Rest of fit pipeline
         X_train_fold, y_train_fold = X.iloc[train_idx], y.iloc[train_idx]
@@ -69,14 +85,24 @@ def GeneralCleaner():
         preds_log = scaler_y.inverse_transform(raw_preds)
         preds_original = np.expm1(preds_log).flatten()
 
-        oos_predictions[val_idx] = preds_original
+        out_of_sample_predictions[val_idx] = preds_original
+    return out_of_sample_predictions
 
+def run_cleanlab_audit(X, y, out_of_sample_predictions, data_module):
+    """Run Cleanlab to identify problematic rows and save the cleaned dataset.
+
+    Args:
+        X: Feature dataframe.
+        y: Target series.
+        out_of_sample_predictions: Predictions from cross-validation.
+        data_module: SalaryDataModule used for preprocessing and filtering.
+    """
     print("--- Audit Complete. Running Cleanlab... ---")
     lab = Datalab(data=pd.DataFrame({'salary': y}), label_name='salary', task='regression')
-    
+
     X_full_scaled = data_module.ct.fit_transform(X, y)
-    lab.find_issues(features=X_full_scaled, pred_probs=oos_predictions)
-    
+    lab.find_issues(features=X_full_scaled, pred_probs=out_of_sample_predictions)
+
     lab.report()
     issues = lab.get_issues()
     issues.to_csv("./srcs/model/datasets/final_cleanlab_issues.csv")
@@ -92,6 +118,15 @@ def GeneralCleaner():
     print(f"Removed {num_removed} problematic rows.")
     
     df_clean.to_csv("./srcs/model/datasets/survey_results_cleaned.csv", index=False)
+
+def GeneralCleaner():
+    """Orchestrate the full cleaning pipeline: preprocess, cross-validate, and audit.
+
+    This function ties together data loading, model validation, and Cleanlab auditing.
+    """
+    data_module, X, y = load_and_preprocess_data()
+    out_of_sample_predictions = perform_cross_validation(X, y, data_module)
+    run_cleanlab_audit(X, y, out_of_sample_predictions, data_module)
 
 if __name__ == "__main__":
     GeneralCleaner()

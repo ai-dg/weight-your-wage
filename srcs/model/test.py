@@ -1,24 +1,14 @@
-from srcs.model.data_preprocessor import SalaryDataModule
-import numpy as np
-from mlflow.tracking import MlflowClient
-import mlflow
-import torch
-import lightning as L
-import os
-import shutil
 import tempfile
-import torch
-
-from srcs.model.salary_model import SalaryModel
-# from dataloader import DataLoaderClass
-from srcs.model.data_preprocessor import SalaryDataModule
-import lightning as L
-from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping, LearningRateMonitor, ModelSummary, LearningRateFinder
-from lightning.pytorch.loggers import CSVLogger, MLFlowLogger
-import mlflow
-from mlflow.tracking import MlflowClient
 import lovely_tensors as lt
 from loguru import logger
+
+import torch
+import lightning as L
+from lightning.pytorch.loggers import MLFlowLogger
+from mlflow.tracking import MlflowClient
+import mlflow
+
+from srcs.model.data_preprocessor import SalaryDataModule
 
 
 MLFLOW_URI = "http://mlflow-server:5000"
@@ -32,7 +22,12 @@ mlflow.set_tracking_uri(MLFLOW_URI)
 mlflow.set_experiment(EXPIREMENT_NAME)
 
 def GeneralTester(version: str | None = None, data: str | None = None):
+    """Test the model using the specified version or champion model.
 
+    Args:
+        version: Model version to test (optional, defaults to champion).
+        data: Data path (optional).
+    """
     #Start clean
     mlflow.end_run()
 
@@ -57,12 +52,8 @@ def GeneralTester(version: str | None = None, data: str | None = None):
         experiment_name=EXPIREMENT_NAME,
         run_id=run_id
     )
- 
-    #Delete pre existing file (rtifacts)
-    #os.system(f"rm -rf {salary_data_module.fit_encoder_filename} {salary_data_module.target_scaler_filename}")
 
     with tempfile.TemporaryDirectory() as tmp_dir:
-        # logger.info(f"tmp_dir :{tmp_dir}")
         #Download new artificats
         artifact_path = mlflow.artifacts.download_artifacts(
             run_id=run_id,

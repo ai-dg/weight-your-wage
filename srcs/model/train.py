@@ -1,7 +1,6 @@
 import torch
 
 from srcs.model.salary_model import SalaryModel
-# from dataloader import DataLoaderClass
 from srcs.model.data_preprocessor import SalaryDataModule
 import lightning as L
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping, LearningRateMonitor, ModelSummary, LearningRateFinder
@@ -21,105 +20,103 @@ mlflow.set_tracking_uri(MLFLOW_URI)
 mlflow.set_experiment(EXPIREMENT_NAME)
 
 def GeneralTrainer():
+    """Train the salary model and register it in MLflow."""
+    #Start clean
+    mlflow.end_run()
 
-	#Start clean
-	mlflow.end_run()
+    #Setup Logger
+    mlf_logger = MLFlowLogger(
+        tracking_uri=MLFLOW_URI,
+        experiment_name=EXPIREMENT_NAME
+    )
 
-	#Setup Logger
-	mlf_logger = MLFlowLogger(
-		tracking_uri=MLFLOW_URI,
-		experiment_name=EXPIREMENT_NAME
-	)
+    salary_data_module = SalaryDataModule("./srcs/model/datasets/survey_results_cleaned.csv")
+    salary_data_module.setup(stage="fit")
+    L.seed_everything(42, workers=True)
+    salary_model = SalaryModel(nb_features=salary_data_module.nb_features, lr=1e-5)
+    salary_model.skip_graph = True
 
-	salary_data_module = SalaryDataModule("./srcs/model/datasets/survey_results_cleaned.csv")
-	salary_data_module.setup(stage="fit")
-	L.seed_everything(42, workers=True)
-	salary_model = SalaryModel(nb_features=salary_data_module.nb_features, lr=1e-5)
-	salary_model.skip_graph = True
+    callbacks = [
+            EarlyStopping(monitor="val_r2", mode="max", patience=5, verbose=True),
+    ]
+    trainer = L.Trainer(
+        accelerator="auto",
+        devices="auto",
+        precision="16-mixed" if torch.cuda.is_available() else "32-true",
+        deterministic=True,
+        max_epochs=100,
+        logger=mlf_logger,
+        enable_progress_bar=False,
+        callbacks=callbacks
+    )
 
-	callbacks = [
-			EarlyStopping(monitor="val_r2", mode="max", patience=5, verbose=True),
-	]
-	trainer = L.Trainer(
-		accelerator="auto",
-		devices="auto",
-		precision="16-mixed" if torch.cuda.is_available() else "32-true",
-		deterministic=True,
-		max_epochs=100,
-		logger=mlf_logger,
-		enable_progress_bar=False,
-		callbacks=callbacks
-	)
+    trainer.fit(
+        model=salary_model,
+        datamodule=salary_data_module
+    )
 
-	trainer.fit(
-		model=salary_model,
-		datamodule=salary_data_module
-	)
+    ######################################################################
+    ##### 							SAVE							 #####
+    ######################################################################
 
-	######################################################################
-	##### 							SAVE							 #####
-	######################################################################
+    val_metrics = trainer.validate(
+        model=salary_model,
+        datamodule=salary_data_module,
+        verbose=False
+    )
+    current_val_r2 = val_metrics[0]["val_r2"]
 
-	val_metrics = trainer.validate(
-		model=salary_model,
-		datamodule=salary_data_module,
-		verbose=False
-	)
-	current_val_r2 = val_metrics[0]["val_r2"]
+    import sys
+    for name, params in salary_model.named_parameters():
+        print(f"name : {name} \n params : {params}", flush=True)
+    sys.stdout.flush()
 
-	import sys
-	for name, params in salary_model.named_parameters():
-		print(f"name : {name} \n params : {params}", flush=True)
-	sys.stdout.flush()
+    run_id = mlf_logger.run_id
+    with mlflow.start_run(run_id=run_id):
+        mlflow.log_artifact(
+            local_path=salary_data_module.fit_encoder_filename,
+            artifact_path="preprocess"
+        )
+        mlflow.log_artifact(
+            local_path=salary_data_module.target_scaler_filename,
+            artifact_path="preprocess"
+        )
 
-	run_id = mlf_logger.run_id
-	with mlflow.start_run(run_id=run_id):
-		mlflow.log_artifact(
-			local_path=salary_data_module.fit_encoder_filename,
-			artifact_path="preprocess"
-		)
-		mlflow.log_artifact(
-			local_path=salary_data_module.target_scaler_filename,
-			artifact_path="preprocess"
-		)
+        mlflow.log_metric("val_r2_final", current_val_r2)
 
-		mlflow.log_metric("val_r2_final", current_val_r2)
+        mlflow.pytorch.log_model(
+            pytorch_model=salary_model,
+            artifact_path="model",
+        )
 
-		mlflow.pytorch.log_model(
-			pytorch_model=salary_model,
-			artifact_path="model",
-		)
+        model_uri = f"runs:/{run_id}/model"
 
-		model_uri = f"runs:/{run_id}/model"
+        mv = mlflow.register_model(
+            model_uri=model_uri,
+            name=MODEL_NAME,
+        )
 
-		mv = mlflow.register_model(
-			model_uri=model_uri,
-			name=MODEL_NAME,
-		)
+        client = MlflowClient()
+        promote = False
 
-		client = MlflowClient()
-		promote = False
+        try:
+            champion_mv = client.get_model_version_by_alias(MODEL_NAME, CHAMPION_ALIAS)
+            champion_run = client.get_run(champion_mv.run_id)
+            champion_val_r2 = champion_run.data.metrics.get("val_r2_final", float("-inf"))
 
-		try:
-			champion_mv = client.get_model_version_by_alias(MODEL_NAME, CHAMPION_ALIAS)
-			champion_run = client.get_run(champion_mv.run_id)
-			champion_val_r2 = champion_run.data.metrics.get("val_r2_final", float("-inf"))
-
-			if current_val_r2 > champion_val_r2:
-				promote = True
-		except Exception:
-			promote = True
-			
-		if promote:
-			client.set_registered_model_alias(
-				name=MODEL_NAME,
-				alias=CHAMPION_ALIAS,
-				version=mv.version
-			)
-	
-	#trainer.test(model=salary_model, dataloaders=test_dataloader)
-
+            if current_val_r2 > champion_val_r2:
+                promote = True
+        except Exception:
+            promote = True
+            
+        if promote:
+            client.set_registered_model_alias(
+                name=MODEL_NAME,
+                alias=CHAMPION_ALIAS,
+                version=mv.version
+            )
+    
 
 if __name__ == "__main__" :
-	GeneralTrainer()
+    GeneralTrainer()
 

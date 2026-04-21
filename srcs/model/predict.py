@@ -5,8 +5,6 @@ import mlflow
 import torch
 import lightning as L
 import os
-import pandas as pd
-from loguru import logger
 import json
 
 MLFLOW_URI = "http://mlflow-server:5000"
@@ -17,6 +15,14 @@ CHAMPION_ALIAS = "champion"
 mlflow.set_tracking_uri(MLFLOW_URI)
 mlflow.set_experiment(EXPIREMENT_NAME)
 def GeneralInferencer(data: dict):
+    """Performs salary prediction inference using the champion model from MLflow.
+
+    Args:
+        data: Dictionary containing input features for prediction.
+
+    Returns:
+        float: Predicted salary value.
+    """
     client = MlflowClient()
 
     model_version = client.get_model_version_by_alias(
@@ -49,15 +55,15 @@ def GeneralInferencer(data: dict):
     )
 
     y_hat = trainer.predict(
-		model=salary_model,
-		datamodule=salary_data_module
-	)
+        model=salary_model,
+        datamodule=salary_data_module
+    )
 
     mlflow.artifacts.download_artifacts(
         artifact_uri=f"runs:/{run_id}/rmse/rmse.json",
         dst_path="./"
     )
-    
+
     with open("rmse.json", 'r') as f:
         rmse = float(json.load(f)['rmse'])
 
@@ -68,6 +74,6 @@ def GeneralInferencer(data: dict):
         )
 
     return float(salary_array[0][0])
-    
+
 if __name__ == "__main__" :
     GeneralInferencer()

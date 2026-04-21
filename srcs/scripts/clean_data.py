@@ -4,7 +4,6 @@ import sys
 import os
 import traceback
 import logging
-from dotenv import load_dotenv
 from sqlalchemy import create_engine, exc
 from fastapi import HTTPException, status
 from model.features_answer import get_features
@@ -136,7 +135,7 @@ def run_clean_data():
 
     try:
         try:
-            df_echange_rate = pd.read_sql("SELECT * FROM prod_exchange", engine)
+            df_exchange_rate = pd.read_sql("SELECT * FROM prod_exchange", engine)
             chunks = pd.read_sql("SELECT * FROM prod_survey", engine, chunksize=10000)
 
         except exc.ProgrammingError as e:
@@ -153,7 +152,7 @@ def run_clean_data():
             mode = 'replace' if i == 0 else 'append'
             logger.info(f"Processing chunk {i}...")
 
-            df_chunk = clean_data(df_chunk, df_echange_rate)
+            df_chunk = clean_data(df_chunk, df_exchange_rate)
 
             for col in columns_to_extract:
                 clean_name = col.replace('HaveWorkedWith', '').lower()
