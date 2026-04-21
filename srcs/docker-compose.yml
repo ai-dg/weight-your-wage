@@ -258,12 +258,6 @@ services:
 
 
   # ── Frontend ───────────────────────────────────────────────────────────────
-  streamlite:
-    container_name: streamlite
-    build:
-      context: ./services/streamlite
-      dockerfile: Dockerfile
-
   frontend:
     profiles: ["dev"]
     container_name: frontend
