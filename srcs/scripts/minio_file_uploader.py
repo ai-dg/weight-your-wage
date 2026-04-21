@@ -3,10 +3,10 @@ from minio.error import S3Error
 from pathlib import Path
 from typing import List, Tuple
 from fastapi import HTTPException, status
-import traceback
-import os
-import logging
 from api.config import settings
+import traceback
+import logging
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -14,7 +14,18 @@ logging.basicConfig(
 )
 logger = logging.getLogger("minio_uploader")
 
+
 def get_minio_client() -> Minio:
+    """
+    Initializes and returns a MinIO client instance using the credentials and 
+    endpoint defined in the global settings.
+    -----------
+    Arguments: 
+    None
+    -----------
+    Return:
+    Minio: A configured MinIO client object ready for S3-compatible operations.
+    """
     try:
         client = Minio(
             endpoint=settings.minio_endpoint,
@@ -34,7 +45,20 @@ def get_minio_client() -> Minio:
             }
         )
 
+
 def run_csv_import_minio():
+    """
+    Orchestrates the upload of predefined CSV datasets to a specific MinIO bucket.
+    It ensures the target bucket exists, verifies the presence of local source
+    files, and handles the sequential upload process with detailed error management.
+    -----------
+    Arguments:
+    None
+    -----------
+    Return:
+    dict: A dictionary containing the success status and the list of destination
+        filenames successfully imported.
+    """
     client = get_minio_client()
     bucket_name = "raw-data"    
     uploads: List[Tuple[Path, str]] = [
@@ -69,7 +93,7 @@ def run_csv_import_minio():
                     "message": "The source file does not exist on the server."
                     }
                 )
-        
+
         try:
             client.fput_object(bucket_name, dest, str(src))
             logger.info(f"Upload successful: {src.name} -> {dest}")
@@ -96,6 +120,7 @@ def run_csv_import_minio():
                 )
 
     return {"status": "success", "imported_files": [u[1] for u in uploads]}
+
 
 if __name__ == "__main__":
     try:
