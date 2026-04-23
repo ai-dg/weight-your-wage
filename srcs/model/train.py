@@ -1,7 +1,9 @@
 import torch
+import os
 
 from srcs.model.salary_model import SalaryModel
 from srcs.model.data_preprocessor import SalaryDataModule
+from srcs.model.clean_lab import GeneralCleaner
 import lightning as L
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping, LearningRateMonitor, ModelSummary, LearningRateFinder
 from lightning.pytorch.loggers import CSVLogger, MLFlowLogger
@@ -19,8 +21,18 @@ lt.monkey_patch()
 mlflow.set_tracking_uri(MLFLOW_URI)
 mlflow.set_experiment(EXPIREMENT_NAME)
 
+CLEANLAB_PATH = "./srcs/model/datasets/survey_results_cleaned.csv"
+
 def GeneralTrainer():
-    """Train the salary model and register it in MLflow."""
+    """
+    Train the salary model and register it in MLflow.
+    -----------
+    Arguments:
+    None
+    -----------
+    Return:
+    None
+    """
     #Start clean
     mlflow.end_run()
 
@@ -30,7 +42,9 @@ def GeneralTrainer():
         experiment_name=EXPIREMENT_NAME
     )
 
-    salary_data_module = SalaryDataModule("./srcs/model/datasets/survey_results_cleaned.csv")
+    if not os.path.isfile(CLEANLAB_PATH):
+        GeneralCleaner("./srcs/model/datasets/survey_results_public.csv")
+    salary_data_module = SalaryDataModule(CLEANLAB_PATH)
     salary_data_module.setup(stage="fit")
     L.seed_everything(42, workers=True)
     salary_model = SalaryModel(nb_features=salary_data_module.nb_features, lr=1e-5)

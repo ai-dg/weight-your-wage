@@ -22,11 +22,15 @@ from srcs.model.features_answer import get_features
 class SalaryDataModule(L.LightningDataModule):
 
     def __init__(self, data=None, artifact_path=None):
-        """Initialize the salary data module with optional input data and artifact storage path.
-
-        Args:
-            data: Path or DataFrame used for training, validation, or prediction.
-            artifact_path: Directory where fitted transformers and scalers are saved and loaded.
+        """
+        Initialize the salary data module with optional input data and artifact storage path.
+        -----------
+        Arguments:
+        data: Path or DataFrame used for training, validation, or prediction.
+        artifact_path: Directory where fitted transformers and scalers are saved and loaded.
+        -----------
+        Return:
+        None
         """
         super().__init__()
         self.data = data
@@ -38,18 +42,26 @@ class SalaryDataModule(L.LightningDataModule):
         self.df = None
 
     def prepare_data(self):
-        """Placeholder for Lightning prepare_data step.
-
-        This method is intentionally empty because all data loading and preprocessing
-        is handled in `setup` and helper methods.
+        """
+        Placeholder for Lightning prepare_data step.
+        -----------
+        Arguments:
+        None
+        -----------
+        Return:
+        None
         """
         pass
 
     def setup(self, stage:str):
-        """Prepare the dataset for the specified Lightning stage.
-
-        Args:
-            stage: One of 'EDA', 'fit', 'test', or 'predict'.
+        """
+        Prepare the dataset for the specified Lightning stage.
+        -----------
+        Arguments:
+        stage: One of 'EDA', 'fit', 'test', or 'predict'.
+        -----------
+        Return:
+        None
         """
         if stage == 'EDA':
             self.df = self.data if isinstance(self.data, pd.DataFrame) else pd.read_csv(self.data)
@@ -88,7 +100,15 @@ class SalaryDataModule(L.LightningDataModule):
             self.X_predict_scaled = self.ct.transform(self.df_predict)
 
     def __str__(self):
-        """Return a string summary containing the current dataframe and its columns."""
+        """
+        Return a string summary containing the current dataframe and its columns.
+        -----------
+        Arguments:
+        None
+        -----------
+        Return:
+        str: String summary of the dataframe.
+        """
         resume = f"{self.df}"
         columns = f"{self.df.columns}"
         return resume + "\n" + columns
@@ -98,10 +118,14 @@ class SalaryDataModule(L.LightningDataModule):
     ######################################################################
 
     def init_encoder(self):
-        """Create and store the preprocessing column transformer for feature encoding.
-
-        This method defines pipelines for numerical, binary, ordinal, one-hot, multi-label,
-        and target encoding, then combines them into a single ColumnTransformer.
+        """
+        Create and store the preprocessing column transformer for feature encoding.
+        -----------
+        Arguments:
+        None
+        -----------
+        Return:
+        None
         """
         need_numerical_encoding = ["WorkExp", "YearsCode"]
 
@@ -168,11 +192,14 @@ class SalaryDataModule(L.LightningDataModule):
     
     def update_currency(self):
         """
-            Convert CompTotal to Euro, then drop CompTotal and Currency features.
-
-            Outliers are filtered out.
+        Convert CompTotal to Euro, then drop CompTotal and Currency features.
+        -----------
+        Arguments:
+        None
+        -----------
+        Return:
+        None
         """
-
         self.df = self.df.dropna(subset="CompTotal")
         self.df.loc[:, "Currency"] = self.df["Currency"].apply(lambda str : str[:3])
 
@@ -200,16 +227,19 @@ class SalaryDataModule(L.LightningDataModule):
         return self.df
 
     def split_data(self, X: pd.DataFrame, y: pd.DataFrame, ratio_test : float = 0.1, ratio_val : float = 0.20, seed : int = 42):
-        """Split features and target into train, validation, and test sets.
-
-        Args:
-            X: Feature dataframe.
-            y: Target series or dataframe.
-            ratio_test: Fraction of the data reserved for the test split.
-            ratio_val: Fraction of the remaining data reserved for validation.
-            seed: Random seed for reproducible splits.
         """
-
+        Split features and target into train, validation, and test sets.
+        -----------
+        Arguments:
+        X: Feature dataframe.
+        y: Target series or dataframe.
+        ratio_test: Fraction of the data reserved for the test split.
+        ratio_val: Fraction of the remaining data reserved for validation.
+        seed: Random seed for reproducible splits.
+        -----------
+        Return:
+        None
+        """
         X_split, X_test, y_split, y_test = train_test_split(X, y, random_state=seed, test_size=ratio_test, shuffle=True)
 
         self.X_test = X_test
@@ -247,10 +277,14 @@ class SalaryDataModule(L.LightningDataModule):
     ######################################################################
 
     def fit_pipeline(self):
-        """Fit preprocessing pipelines and scale training and validation data.
-
-        This method extracts the target, splits data, fits the transformer on training data,
-        and standardizes the salary target for training and validation.
+        """
+        Fit preprocessing pipelines and scale training and validation data.
+        -----------
+        Arguments:
+        None
+        -----------
+        Return:
+        None
         """
         # self.init_encoder()
         X, y  = self.extract_target() #Separe X and Y
@@ -284,7 +318,15 @@ class SalaryDataModule(L.LightningDataModule):
     ######################################################################
 
     def train_dataloader(self):
-        """Return a DataLoader for the training dataset."""
+        """
+        Return a DataLoader for the training dataset.
+        -----------
+        Arguments:
+        None
+        -----------
+        Return:
+        DataLoader: DataLoader for training data.
+        """
         dataset = TensorDataset(
             torch.tensor(self.X_train_scaled, dtype=torch.float32),
             torch.tensor(self.y_train_scaled, dtype=torch.float32),
@@ -292,14 +334,30 @@ class SalaryDataModule(L.LightningDataModule):
         return DataLoader(dataset, batch_size=self.batch_size)
 
     def predict_dataloader(self):
-        """Return a DataLoader for prediction inputs."""
+        """
+        Return a DataLoader for prediction inputs.
+        -----------
+        Arguments:
+        None
+        -----------
+        Return:
+        DataLoader: DataLoader for prediction data.
+        """
         dataset = TensorDataset(
             torch.tensor(self.X_predict_scaled, dtype=torch.float32),
             )
         return DataLoader(dataset, batch_size=self.batch_size)
 
     def val_dataloader(self):
-        """Return a DataLoader for the validation dataset."""
+        """
+        Return a DataLoader for the validation dataset.
+        -----------
+        Arguments:
+        None
+        -----------
+        Return:
+        DataLoader: DataLoader for validation data.
+        """
         dataset = TensorDataset(
             torch.tensor(self.X_val_scaled, dtype=torch.float32),
             torch.tensor(self.y_val_scaled, dtype=torch.float32),
@@ -307,7 +365,15 @@ class SalaryDataModule(L.LightningDataModule):
         return DataLoader(dataset, batch_size=self.batch_size)
 
     def test_dataloader(self):
-        """Return a DataLoader for the test dataset."""
+        """
+        Return a DataLoader for the test dataset.
+        -----------
+        Arguments:
+        None
+        -----------
+        Return:
+        DataLoader: DataLoader for test data.
+        """
         dataset = TensorDataset(
             torch.tensor(self.X_test_scaled, dtype=torch.float32),
             torch.tensor(self.y_test_scaled, dtype=torch.float32),

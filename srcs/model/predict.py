@@ -15,13 +15,14 @@ CHAMPION_ALIAS = "champion"
 mlflow.set_tracking_uri(MLFLOW_URI)
 mlflow.set_experiment(EXPIREMENT_NAME)
 def GeneralInferencer(data: dict):
-    """Performs salary prediction inference using the champion model from MLflow.
-
-    Args:
-        data: Dictionary containing input features for prediction.
-
-    Returns:
-        float: Predicted salary value.
+    """
+    Performs salary prediction inference using the champion model from MLflow.
+    -----------
+    Arguments:
+    data: Dictionary containing input features for prediction.
+    -----------
+    Return:
+    float: Predicted salary value.
     """
     client = MlflowClient()
 

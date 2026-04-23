@@ -23,11 +23,15 @@ L.seed_everything(42, workers=True)
 class SalaryModel(L.LightningModule):
 
     def __init__(self, nb_features, lr = 1e-3):
-        """Initialize the salary model with number of features and learning rate.
-
-        Args:
-            nb_features: Number of input features.
-            lr: Learning rate for the optimizer.
+        """
+        Initialize the salary model with number of features and learning rate.
+        -----------
+        Arguments:
+        nb_features: Number of input features.
+        lr: Learning rate for the optimizer.
+        -----------
+        Return:
+        None
         """
         super().__init__()
         self.save_hyperparameters()
@@ -52,25 +56,27 @@ class SalaryModel(L.LightningModule):
         self.test_r2_metric = R2Score()
 
     def forward(self, x):
-        """Forward pass through the model.
-
-        Args:
-            x: Input tensor.
-
-        Returns:
-            torch.Tensor: Model output.
+        """
+        Forward pass through the model.
+        -----------
+        Arguments:
+        x: Input tensor.
+        -----------
+        Return:
+        torch.Tensor: Model output.
         """
         z = self.base_model(x)
         return self.regressor(z)
  
     def training_step(self, batch):
-        """Perform a training step.
-
-        Args:
-            batch: Tuple of (x, y) tensors.
-
-        Returns:
-            torch.Tensor: Loss value.
+        """
+        Perform a training step.
+        -----------
+        Arguments:
+        batch: Tuple of (x, y) tensors.
+        -----------
+        Return:
+        torch.Tensor: Loss value.
         """
         x, y = batch
         y_hat = self(x)
@@ -79,10 +85,14 @@ class SalaryModel(L.LightningModule):
         return loss
     
     def validation_step(self, batch):
-        """Perform a validation step.
-
-        Args:
-            batch: Tuple of (x, y) tensors.
+        """
+        Perform a validation step.
+        -----------
+        Arguments:
+        batch: Tuple of (x, y) tensors.
+        -----------
+        Return:
+        None
         """
         x, y = batch
         y_hat = self(x)
@@ -92,10 +102,14 @@ class SalaryModel(L.LightningModule):
         self.log("val_r2", val_r2, on_step=False, on_epoch=True, logger=True, prog_bar=True)
 
     def test_step(self, batch):
-        """Perform a test step.
-
-        Args:
-            batch: Tuple of (x, y) tensors.
+        """
+        Perform a test step.
+        -----------
+        Arguments:
+        batch: Tuple of (x, y) tensors.
+        -----------
+        Return:
+        None
         """
         x, y = batch
         y_hat = self(x)
@@ -105,29 +119,42 @@ class SalaryModel(L.LightningModule):
         self.log("test_r2", test_r2, on_step=False, on_epoch=True, logger=True, prog_bar=True)
 
     def predict_step(self, batch, batch_idx):
-        """Perform a prediction step.
-
-        Args:
-            batch: Input batch.
-            batch_idx: Batch index.
-
-        Returns:
-            torch.Tensor: Predictions.
+        """
+        Perform a prediction step.
+        -----------
+        Arguments:
+        batch: Input batch.
+        batch_idx: Batch index.
+        -----------
+        Return:
+        torch.Tensor: Predictions.
         """
         x = batch[0] if isinstance(batch, (tuple, list)) else batch
         return self(x)
 
     def configure_optimizers(self):
-        """Configure the optimizer.
-
-        Returns:
-            torch.optim.Optimizer: Configured optimizer.
+        """
+        Configure the optimizer.
+        -----------
+        Arguments:
+        None
+        -----------
+        Return:
+        torch.optim.Optimizer: Configured optimizer.
         """
         optimizer = optim.Adam(self.parameters(), lr=self.lr, weight_decay=1e-4)
         return optimizer
 
     def on_train_end(self):
-        """Perform actions at the end of training, including logging metrics and plots."""
+        """
+        Perform actions at the end of training, including logging metrics and plots.
+        -----------
+        Arguments:
+        None
+        -----------
+        Return:
+        None
+        """
         if getattr(self, 'skip_graph', False):
             return
         val_dataloader = self.trainer.datamodule.val_dataloader()
@@ -150,15 +177,16 @@ class SalaryModel(L.LightningModule):
         lab.report()
 
     def density_plot(self, dataloader, scaler, html_file_name):
-        """Create and log density plot for predictions vs true values.
-
-        Args:
-            dataloader: DataLoader for the dataset.
-            scaler: Scaler for inverse transformation.
-            html_file_name: Name of the HTML file to save the plot.
-
-        Returns:
-            list: List containing X, y_true, y_hat.
+        """
+        Create and log density plot for predictions vs true values.
+        -----------
+        Arguments:
+        dataloader: DataLoader for the dataset.
+        scaler: Scaler for inverse transformation.
+        html_file_name: Name of the HTML file to save the plot.
+        -----------
+        Return:
+        list: List containing X, y_true, y_hat.
         """
         all_y_true = []
         all_y_hat = []
@@ -197,11 +225,15 @@ class SalaryModel(L.LightningModule):
         return [X, y_true, y_hat]
 
     def log_rmse(self, y_true, y_hat):
-        """Log RMSE metrics and create plots.
-
-        Args:
-            y_true: True values.
-            y_hat: Predicted values.
+        """
+        Log RMSE metrics and create plots.
+        -----------
+        Arguments:
+        y_true: True values.
+        y_hat: Predicted values.
+        -----------
+        Return:
+        None
         """
         all_rmse = []
         all_y = []
@@ -246,11 +278,15 @@ class SalaryModel(L.LightningModule):
         )
 
     def log_mae(self, y_true, y_hat):
-        """Log MAE metrics and create plots.
-
-        Args:
-            y_true: True values.
-            y_hat: Predicted values.
+        """
+        Log MAE metrics and create plots.
+        -----------
+        Arguments:
+        y_true: True values.
+        y_hat: Predicted values.
+        -----------
+        Return:
+        None
         """
         mae = np.abs(y_true - y_hat)
 

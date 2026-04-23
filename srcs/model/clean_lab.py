@@ -10,13 +10,17 @@ from srcs.model.salary_model import SalaryModel
 from srcs.model.data_preprocessor import SalaryDataModule
 from srcs.model.features_answer import get_features
 
-def load_and_preprocess_data():
-    """Load raw survey data, initialize the preprocessing module, and extract features and target.
-
-    Returns:
-        tuple: A tuple containing the initialized SalaryDataModule, feature dataframe X, and target series y.
+def load_and_preprocess_data(df_path):
     """
-    df = pd.read_csv("./srcs/model/datasets/survey_results_public.csv")
+    Load raw survey data, initialize the preprocessing module, and extract features and target.
+    -----------
+    Arguments:
+    None
+    -----------
+    Return:
+    tuple: A tuple containing the initialized SalaryDataModule, feature dataframe X, and target series y.
+    """
+    df = pd.read_csv(df_path)
     data_module = SalaryDataModule()
     data_module.df = df[get_features()].copy()
     data_module.update_currency()
@@ -25,15 +29,16 @@ def load_and_preprocess_data():
     return (data_module, X, y)
 
 def perform_cross_validation(X, y, data_module):
-    """Run 5-fold cross-validation and collect out-of-sample predictions.
-
-    Args:
-        X: Feature dataframe.
-        y: Target series.
-        data_module: SalaryDataModule with preprocessing setup.
-
-    Returns:
-        numpy.ndarray: Out-of-sample predictions aligned with the original data order.
+    """
+    Run 5-fold cross-validation and collect out-of-sample predictions.
+    -----------
+    Arguments:
+    X: Feature dataframe.
+    y: Target series.
+    data_module: SalaryDataModule with preprocessing setup.
+    -----------
+    Return:
+    numpy.ndarray: Out-of-sample predictions aligned with the original data order.
     """
     out_of_sample_predictions = np.zeros(len(y))
     
@@ -89,13 +94,17 @@ def perform_cross_validation(X, y, data_module):
     return out_of_sample_predictions
 
 def run_cleanlab_audit(X, y, out_of_sample_predictions, data_module):
-    """Run Cleanlab to identify problematic rows and save the cleaned dataset.
-
-    Args:
-        X: Feature dataframe.
-        y: Target series.
-        out_of_sample_predictions: Predictions from cross-validation.
-        data_module: SalaryDataModule used for preprocessing and filtering.
+    """
+    Run Cleanlab to identify problematic rows and save the cleaned dataset.
+    -----------
+    Arguments:
+    X: Feature dataframe.
+    y: Target series.
+    out_of_sample_predictions: Predictions from cross-validation.
+    data_module: SalaryDataModule used for preprocessing and filtering.
+    -----------
+    Return:
+    None
     """
     print("--- Audit Complete. Running Cleanlab... ---")
     lab = Datalab(data=pd.DataFrame({'salary': y}), label_name='salary', task='regression')
@@ -119,14 +128,19 @@ def run_cleanlab_audit(X, y, out_of_sample_predictions, data_module):
     
     df_clean.to_csv("./srcs/model/datasets/survey_results_cleaned.csv", index=False)
 
-def GeneralCleaner():
-    """Orchestrate the full cleaning pipeline: preprocess, cross-validate, and audit.
-
-    This function ties together data loading, model validation, and Cleanlab auditing.
+def GeneralCleaner(df_path):
     """
-    data_module, X, y = load_and_preprocess_data()
+    Orchestrate the full cleaning pipeline: preprocess, cross-validate, and audit.
+    -----------
+    Arguments:
+    None
+    -----------
+    Return:
+    None
+    """
+    data_module, X, y = load_and_preprocess_data(df_path)
     out_of_sample_predictions = perform_cross_validation(X, y, data_module)
     run_cleanlab_audit(X, y, out_of_sample_predictions, data_module)
 
 if __name__ == "__main__":
-    GeneralCleaner()
+    GeneralCleaner("./srcs/model/datasets/survey_results_public.csv")

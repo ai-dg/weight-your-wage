@@ -22,11 +22,15 @@ mlflow.set_tracking_uri(MLFLOW_URI)
 mlflow.set_experiment(EXPIREMENT_NAME)
 
 def GeneralTester(version: str | None = None, data: str | None = None):
-    """Test the model using the specified version or champion model.
-
-    Args:
-        version: Model version to test (optional, defaults to champion).
-        data: Data path (optional).
+    """
+    Test the model using the specified version or champion model.
+    -----------
+    Arguments:
+    version: Model version to test (optional, defaults to champion).
+    data: Data path (optional).
+    -----------
+    Return:
+    None
     """
     #Start clean
     mlflow.end_run()
