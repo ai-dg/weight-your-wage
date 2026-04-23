@@ -16,8 +16,10 @@ def load_and_preprocess_data():
     Returns:
         tuple: A tuple containing the initialized SalaryDataModule, feature dataframe X, and target series y.
     """
-    df = pd.read_csv("./srcs/model/datasets/survey_results_public.csv")
+    L.seed_everything(42, workers=True)
     data_module = SalaryDataModule()
+    data_module.prepare_data()
+    df = pd.read_csv("./srcs/model/datasets/survey_results_public.csv")
     data_module.df = df[get_features()].copy()
     data_module.update_currency()
     data_module.init_encoder()
@@ -74,6 +76,7 @@ def perform_cross_validation(X, y, data_module):
             max_epochs=10, 
             accelerator="auto", 
             enable_checkpointing=False,
+            deterministic=True,
             logger=False
         )
 
@@ -118,6 +121,11 @@ def run_cleanlab_audit(X, y, out_of_sample_predictions, data_module):
     print(f"Removed {num_removed} problematic rows.")
     
     df_clean.to_csv("./srcs/model/datasets/survey_results_cleaned.csv", index=False)
+
+    # Manual memory cleanup
+    del trainer, model, train_loader, val_loader
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
 def GeneralCleaner():
     """Orchestrate the full cleaning pipeline: preprocess, cross-validate, and audit.

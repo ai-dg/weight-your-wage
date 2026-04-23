@@ -18,6 +18,7 @@ from sklearn.pipeline import Pipeline
 
 from srcs.model.scikit_encoder import SmartOrdinalEncoder, SmartMultilabelEncoder, SmartOneHotEncoder
 from srcs.model.features_answer import get_features
+from srcs.model.dl_dataset import download_survey_file
 
 class SalaryDataModule(L.LightningDataModule):
 
@@ -38,12 +39,16 @@ class SalaryDataModule(L.LightningDataModule):
         self.df = None
 
     def prepare_data(self):
-        """Placeholder for Lightning prepare_data step.
+        """Download and cache the raw survey dataset used by the training pipeline.
 
-        This method is intentionally empty because all data loading and preprocessing
-        is handled in `setup` and helper methods.
+        This method ensures `survey_results_public.csv` exists in
+        `./srcs/model/datasets` by calling `download_survey_file`.
         """
-        pass
+        dataset_path = download_survey_file(
+            target_dir="./srcs/model/datasets",
+            filename="survey_results_public.csv",
+        )
+        logger.info(f"Dataset ready: {dataset_path}")
 
     def setup(self, stage:str):
         """Prepare the dataset for the specified Lightning stage.

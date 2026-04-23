@@ -2,12 +2,14 @@ import torch
 
 from srcs.model.salary_model import SalaryModel
 from srcs.model.data_preprocessor import SalaryDataModule
+from srcs.model.clean import GeneralCleaner
 import lightning as L
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping, LearningRateMonitor, ModelSummary, LearningRateFinder
 from lightning.pytorch.loggers import CSVLogger, MLFlowLogger
 import mlflow
 from mlflow.tracking import MlflowClient
 import lovely_tensors as lt
+import os
 
 MLFLOW_URI = "http://mlflow-server:5000"
 EXPIREMENT_NAME = "SalariOps"
@@ -23,6 +25,8 @@ def GeneralTrainer():
     """Train the salary model and register it in MLflow."""
     #Start clean
     mlflow.end_run()
+	if not os.path.exists("./srcs/model/datasets/survey_results_cleaned.csv"):
+		GeneralCleaner()
 
     #Setup Logger
     mlf_logger = MLFlowLogger(
@@ -31,6 +35,7 @@ def GeneralTrainer():
     )
 
     salary_data_module = SalaryDataModule("./srcs/model/datasets/survey_results_cleaned.csv")
+	salary_data_module.prepare_data()
     salary_data_module.setup(stage="fit")
     L.seed_everything(42, workers=True)
     salary_model = SalaryModel(nb_features=salary_data_module.nb_features, lr=1e-5)
