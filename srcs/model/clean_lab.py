@@ -94,6 +94,11 @@ def perform_cross_validation(X, y, data_module):
         preds_original = np.expm1(preds_log).flatten()
 
         out_of_sample_predictions[val_idx] = preds_original
+
+     # Manual memory cleanup
+    del trainer, model, train_loader, val_loader
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
     return out_of_sample_predictions
 
 def run_cleanlab_audit(X, y, out_of_sample_predictions, data_module):
@@ -130,11 +135,6 @@ def run_cleanlab_audit(X, y, out_of_sample_predictions, data_module):
     print(f"Removed {num_removed} problematic rows.")
     
     df_clean.to_csv("./srcs/model/datasets/survey_results_cleaned.csv", index=False)
-
-    # Manual memory cleanup
-    del trainer, model, train_loader, val_loader
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
 
 
 def GeneralCleaner(df_path):

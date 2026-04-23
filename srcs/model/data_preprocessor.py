@@ -115,7 +115,7 @@ class SalaryDataModule(L.LightningDataModule):
         return resume + "\n" + columns
 
     ######################################################################
-    ##### 						INIT ENCODER						 #####
+    #####                         INIT ENCODER                         #####
     ######################################################################
 
     def init_encoder(self):
@@ -256,7 +256,7 @@ class SalaryDataModule(L.LightningDataModule):
         self.y_val = y_val.to_frame()
 
     ######################################################################
-    ##### 						UTILS								 #####
+    #####                         UTILS                                 #####
     ######################################################################
 
     def extract_target(self):
@@ -274,7 +274,7 @@ class SalaryDataModule(L.LightningDataModule):
         return X, y
 
     ######################################################################
-    ##### 					FIT PIPELINE							 #####
+    #####                     FIT PIPELINE                             #####
     ######################################################################
 
     def fit_pipeline(self):
@@ -315,7 +315,7 @@ class SalaryDataModule(L.LightningDataModule):
         joblib.dump(self.scaler_y, self.target_scaler_filename)
 
     ######################################################################
-    ##### 						DATALOADER							 #####
+    #####                         DATALOADER                             #####
     ######################################################################
 
     def train_dataloader(self):

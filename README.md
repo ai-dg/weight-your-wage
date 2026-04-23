@@ -12,6 +12,7 @@ Experience the full MLOps pipeline in action! Visit our live deployment to:
 **[🔗 View Live Demo](https://your-website-url.com)**
 
 ## Features
+< To add: Grafana>
 - **Data Ingestion**: Upload CSV files to MinIO object storage.
 - **ETL Pipeline**: Transform and load data into PostgreSQL with analytics tables.
 - **Model Training**: Train regression models using PyTorch Lightning with MLflow tracking.
@@ -20,6 +21,7 @@ Experience the full MLOps pipeline in action! Visit our live deployment to:
 - **Containerized**: Fully Dockerized for easy deployment.
 
 ## Tech Stack
+< To add: Grafana>
 - **Languages**: Python
 - **Frameworks**: PyTorch Lightning, FastAPI, MLflow
 - **Databases**: PostgreSQL, MinIO
@@ -47,13 +49,16 @@ Experience the full MLOps pipeline in action! Visit our live deployment to:
    make up
    ```
 
+< to add : you need to train the model once to make predict, test, etc. work>
 **Note**: This project is designed to run exclusively with Docker. Do not attempt to run components outside of the containerized environment, as dependencies and configurations are managed within Docker.
 
 ## Usage
 Once services are running via Docker:
 
+< To correct/doublecheck: You can only upload manually>
 1. **Upload Data**: The MinIO uploader runs automatically or via container scripts.
 
+< To doublecheck with Adrien if this is true>
 2. **ETL Processing**: Executed within the ETL container (Extract / Transform / Load).
 
 3. **Train Model**: Run training within the ML container.
@@ -62,6 +67,7 @@ Once services are running via Docker:
 
 5. **Inference**: Access the FastAPI endpoint through the running containers.
 
+< To change: indicate that you should see logs into the folders /srcs/logs>
 Use `make logs` to view service logs, and `make down` to stop services.
 
 ## Configuration

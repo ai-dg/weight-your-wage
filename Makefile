@@ -81,6 +81,7 @@ dependencies-py:
 	@bash srcs/scripts/dependencies/dependencies_py.sh
 	@bash srcs/scripts/logs/kill-finder.sh 2>/dev/null || true
 
+# TODO - clear build cache
 fclean: clean
 	@echo "Performing factory reset..."
 	$(MAKE) fix-perms
