@@ -10,6 +10,7 @@ mlruns
 notes.txt
 .cursor
 .env
+*.html
 
 # Modèle / MLflow / checkpoints (artefacts locaux)
 srcs/model/logs/

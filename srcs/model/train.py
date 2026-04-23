@@ -10,6 +10,7 @@ from lightning.pytorch.loggers import CSVLogger, MLFlowLogger
 import mlflow
 from mlflow.tracking import MlflowClient
 import lovely_tensors as lt
+import os
 
 MLFLOW_URI = "http://mlflow-server:5000"
 EXPIREMENT_NAME = "SalariOps"
@@ -45,6 +46,7 @@ def GeneralTrainer():
     if not os.path.isfile(CLEANLAB_PATH):
         GeneralCleaner("./srcs/model/datasets/survey_results_public.csv")
     salary_data_module = SalaryDataModule(CLEANLAB_PATH)
+	salary_data_module.prepare_data()
     salary_data_module.setup(stage="fit")
     L.seed_everything(42, workers=True)
     salary_model = SalaryModel(nb_features=salary_data_module.nb_features, lr=1e-5)
