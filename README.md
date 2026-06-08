@@ -1,4 +1,4 @@
-# Weight Your Wage — Lightning MLOps Stack
+# Weight Your Wage - Lightning MLOps Stack
 
 **An end-to-end MLOps pipeline for developer salary prediction, trained on the Stack Overflow Developer Survey.**
 
@@ -168,56 +168,76 @@ Local defaults:
 
 ## ▌Configuration
 
-Create a `srcs/.env` file with the following variables:
+Create a `srcs/.env` file. The values below are **example placeholders** — replace them with your own secrets before deploying. Generate your own API keys; never commit real ones.
 
 ```dotenv
+# Grafana / MLflow
+GRAFANA_PORT=3000
+ARTIFACT_ROOT="./srcs/data/artifacts"
+MLFLOW_SERVER_PORT=5000
+BACKEND_STORE_URI=postgresql+psycopg2://mlflow:mlflow@postgres:5432/mlflowdb
+
+# Configuration Fastapi
+APP_ENV=PROD
+ML_ENGINEER_API_KEY=        # generate your own — required on ML routes when APP_ENV=PROD (header: X-ML-Engineer-Key)
+GENERAL_API_KEY=            # generate your own — required on all /jobs routes (header: X-General-API-Key)
+
+# Configuration Postgres
+DB_USER=admin
+DB_PASSWORD=mysecretpassword
+DB_NAME=psql_db
+DB_PORT=5432
+DB_HOST=postgres
+
+# Config Mlflow db
+DB_MLFLOW_USER=mlflow_user
+DB_MLFLOW_PASSWORD=mlflow_password
+DB_MLFLOW_NAME=mlflow_db
+
+# Config MinIO / S3 Configuration
+MINIO_ENDPOINT=minio:9000
+MINIO_ROOT_USER=minioadmin
+MINIO_ROOT_PASSWORD=minioadmin
+MLFLOW_BUCKET_NAME=mlflow-artifacts
+AWS_ACCESS_KEY_ID=minioadmin
+AWS_SECRET_ACCESS_KEY=minioadmin
+
+# Configuration pgAdmin (web interface) + cAdvisor UI
+# Host ports — avoid 8080 if it is already in use
+CADVISOR_PORT=9080
+PGADMIN_PORT=5050
+PGADMIN_EMAIL=admin@admin.com
+PGADMIN_PASSWORD=admin_password
+
+# Configuration grafana (Mail alert)
+GF_SMTP_ENABLED=true
+GF_SMTP_HOST=smtp.gmail.com:587
+GF_SMTP_USER=your-email@gmail.com
+GF_SMTP_PASSWORD=your-password
+GF_SMTP_FROM_ADDRESS=your-email@gmail.com
+
 # Host user (for container file permissions)
 UID=1000
 GID=1000
 
-# App
-APP_ENV=dev            # "prod" enforces the ML Engineer API key
-NODE_ENV=dev           # set PROD to disable the dev profile (frontend)
+# Environment profile (PROD disables the dev profile / frontend)
+NODE_ENV=PROD
 
-# API keys
-GENERAL_API_KEY=...        # required on all /jobs routes (header: X-General-API-Key)
-ML_ENGINEER_API_KEY=...    # required on ML routes when APP_ENV=prod (header: X-ML-Engineer-Key)
+# Frontend (Next.js + Wrangler)
+FRONTEND_PORT=4245
+FRONTEND_INTERNAL_PORT=3001
+WRANGLER_PORT=8788
+WRANGLER_INTERNAL_PORT=8788
 
-# PostgreSQL
-DB_NAME=...
-DB_USER=...
-DB_PASSWORD=...
-DB_HOST=postgres
-DB_PORT=5432
-
-# MinIO / S3
-MINIO_ENDPOINT=minio:9000
-MINIO_ROOT_USER=...
-MINIO_ROOT_PASSWORD=...
-AWS_ACCESS_KEY_ID=...
-AWS_SECRET_ACCESS_KEY=...
-
-# Metabase
-METABASE_URL=...
-METABASE_ADMIN_EMAIL=...
-METABASE_ADMIN_PASSWORD=...
-METABASE_ADMIN_FIRST_NAME=...
-METABASE_ADMIN_LAST_NAME=...
-
-# pgAdmin
-PGADMIN_EMAIL=...
-PGADMIN_PASSWORD=...
-PGADMIN_PORT=5050
-
-# Observability (optional ports / SMTP for Grafana alerts)
-GRAFANA_PORT=3000
-PROMETHEUS_PORT=9091
-GF_SMTP_ENABLED=false
-GF_SMTP_HOST=
-GF_SMTP_USER=
-GF_SMTP_PASSWORD=
-GF_SMTP_FROM_ADDRESS=
+# Config Metabase
+METABASE_ADMIN_EMAIL=metaadmin@metaadmin.fr
+METABASE_ADMIN_PASSWORD=metaadmin1
+METABASE_ADMIN_FIRST_NAME=meta
+METABASE_ADMIN_LAST_NAME=admin
+METABASE_URL=http://metabase:3000/api
 ```
+
+> **Warning**: These are example values for documentation only. Never commit your real `srcs/.env` — generate fresh API keys and strong passwords for any real deployment.
 
 ---
 
@@ -297,7 +317,12 @@ lightning-mlops-stack/
 
 ## ▌License
 
-MIT License.
+This project is licensed under the **GNU General Public License v3.0 (GPL-3.0)**.\
+You are free to use, study, share, and modify the code, provided that any distributed
+derivative work remains licensed under the GPL-3.0 and keeps its source code open.\
+The software is provided **without any warranty**.
+
+See the [LICENSE](LICENSE) file for the full text.
 
 ---
 

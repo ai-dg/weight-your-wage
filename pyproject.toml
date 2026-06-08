@@ -3,6 +3,7 @@ name = "lightning-mlops-stack"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
+license = "GPL-3.0-or-later"
 requires-python = ">=3.10,<3.13"
 dependencies = [
 	"anyio>=3.7.0,<4",
