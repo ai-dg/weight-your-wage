@@ -1,4 +1,4 @@
-# Weight Your Wage — Lightning MLOps Stack
+# Weight Your Wage - Lightning MLOps Stack
 
 **An end-to-end MLOps pipeline for developer salary prediction, trained on the Stack Overflow Developer Survey.**
 
@@ -179,8 +179,8 @@ BACKEND_STORE_URI=postgresql+psycopg2://mlflow:mlflow@postgres:5432/mlflowdb
 
 # Configuration Fastapi
 APP_ENV=PROD
-ML_ENGINEER_API_KEY=ZQzU9ir8Kna3TMPnvvGDPgHCYpW7oqt3
-GENERAL_API_KEY=2VBDDMGKucPj197AuQOqUR1lBVW2GjN0
+ML_ENGINEER_API_KEY=
+GENERAL_API_KEY=
 
 # Configuration Postgres
 DB_USER=admin
