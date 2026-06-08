@@ -5,7 +5,7 @@
   "scripts": {
     "dev:next": "next dev -H 0.0.0.0 -p ${PORT:-3001}",
     "dev:pages": "npx wrangler pages dev cf-pages-assets --proxy ${PORT:-3001} --port ${WRANGLER_INTERNAL_PORT:-8788} --ip 0.0.0.0 --compatibility-date=2024-09-23",
-    "dev:pages:docker": "npx wrangler pages dev cf-pages-assets --proxy ${PORT:-3001} --port ${WRANGLER_INTERNAL_PORT:-8788} --ip 0.0.0.0 --compatibility-date=2024-09-23",
+    "dev:pages:docker": "npx wrangler pages dev cf-pages-assets --proxy ${PORT:-3001} --port ${WRANGLER_INTERNAL_PORT:-8788} --ip 0.0.0.0 --compatibility-date=2024-09-23 --binding GENERAL_API_KEY=${GENERAL_API_KEY} ML_ENGINEER_API_KEY=${ML_ENGINEER_API_KEY}",
     "dev": "NEXT_PUBLIC_PREDICT_URL=/predict npx concurrently -k \"npm run dev:next\" \"npm run dev:pages\"",
     "dev:docker": "NEXT_PUBLIC_PREDICT_URL=/predict npx concurrently \"npm run dev:next\" \"npm run dev:pages:docker\"",
     "build": "next build",

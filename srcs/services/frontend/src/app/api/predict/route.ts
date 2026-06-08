@@ -5,14 +5,23 @@ import { getServerEnv } from "@/lib/env/public";
 export async function POST(request: NextRequest) {
   try {
     const payload = await request.json();
-    const { fastapiInternalUrl, predictPath } = getServerEnv();
+    const { fastapiInternalUrl, predictPath, generalApiKey, mlEngineerApiKey } =
+      getServerEnv();
     const targetUrl = `${fastapiInternalUrl}${predictPath}`;
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json"
+    };
+    if (generalApiKey) {
+      headers["X-General-API-Key"] = generalApiKey;
+    }
+    if (mlEngineerApiKey) {
+      headers["X-ML-Engineer-Key"] = mlEngineerApiKey;
+    }
 
     const response = await fetch(targetUrl, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers,
       body: JSON.stringify(payload),
       cache: "no-store"
     });

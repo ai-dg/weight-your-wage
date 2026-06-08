@@ -1,5 +1,7 @@
 type Env = {
   FASTAPI_ORIGIN?: string;
+  GENERAL_API_KEY?: string;
+  ML_ENGINEER_API_KEY?: string;
 };
 
 /**
@@ -25,12 +27,22 @@ export const onRequestPost = async (context: {
     });
   }
 
+  const headers: Record<string, string> = {
+    "Content-Type":
+      context.request.headers.get("Content-Type") || "application/json"
+  };
+  const generalApiKey = context.env.GENERAL_API_KEY?.trim();
+  const mlEngineerApiKey = context.env.ML_ENGINEER_API_KEY?.trim();
+  if (generalApiKey) {
+    headers["X-General-API-Key"] = generalApiKey;
+  }
+  if (mlEngineerApiKey) {
+    headers["X-ML-Engineer-Key"] = mlEngineerApiKey;
+  }
+
   const upstream = await fetch(`${origin}/predict`, {
     method: "POST",
-    headers: {
-      "Content-Type":
-        context.request.headers.get("Content-Type") || "application/json"
-    },
+    headers,
     body: bodyText
   });
 
