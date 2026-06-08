@@ -168,6 +168,7 @@ Local defaults:
 
 ## ▌Configuration
 
+<<<<<<< HEAD
 Create a `srcs/.env` file. The values below are **example placeholders** — replace them with your own secrets before deploying. Generate your own API keys; never commit real ones.
 
 ```dotenv
@@ -216,28 +217,58 @@ GF_SMTP_USER=your-email@gmail.com
 GF_SMTP_PASSWORD=your-password
 GF_SMTP_FROM_ADDRESS=your-email@gmail.com
 
+=======
+Create a `srcs/.env` file with the following variables:
+
+```dotenv
+>>>>>>> parent of c4f6494 ([UPDATE] README and LICENSE)
 # Host user (for container file permissions)
 UID=1000
 GID=1000
 
-# Environment profile (PROD disables the dev profile / frontend)
-NODE_ENV=PROD
+# App
+APP_ENV=dev            # "prod" enforces the ML Engineer API key
+NODE_ENV=dev           # set PROD to disable the dev profile (frontend)
 
-# Frontend (Next.js + Wrangler)
-FRONTEND_PORT=4245
-FRONTEND_INTERNAL_PORT=3001
-WRANGLER_PORT=8788
-WRANGLER_INTERNAL_PORT=8788
+# API keys
+GENERAL_API_KEY=...        # required on all /jobs routes (header: X-General-API-Key)
+ML_ENGINEER_API_KEY=...    # required on ML routes when APP_ENV=prod (header: X-ML-Engineer-Key)
 
-# Config Metabase
-METABASE_ADMIN_EMAIL=metaadmin@metaadmin.fr
-METABASE_ADMIN_PASSWORD=metaadmin1
-METABASE_ADMIN_FIRST_NAME=meta
-METABASE_ADMIN_LAST_NAME=admin
-METABASE_URL=http://metabase:3000/api
+# PostgreSQL
+DB_NAME=...
+DB_USER=...
+DB_PASSWORD=...
+DB_HOST=postgres
+DB_PORT=5432
+
+# MinIO / S3
+MINIO_ENDPOINT=minio:9000
+MINIO_ROOT_USER=...
+MINIO_ROOT_PASSWORD=...
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+
+# Metabase
+METABASE_URL=...
+METABASE_ADMIN_EMAIL=...
+METABASE_ADMIN_PASSWORD=...
+METABASE_ADMIN_FIRST_NAME=...
+METABASE_ADMIN_LAST_NAME=...
+
+# pgAdmin
+PGADMIN_EMAIL=...
+PGADMIN_PASSWORD=...
+PGADMIN_PORT=5050
+
+# Observability (optional ports / SMTP for Grafana alerts)
+GRAFANA_PORT=3000
+PROMETHEUS_PORT=9091
+GF_SMTP_ENABLED=false
+GF_SMTP_HOST=
+GF_SMTP_USER=
+GF_SMTP_PASSWORD=
+GF_SMTP_FROM_ADDRESS=
 ```
-
-> **Warning**: These are example values for documentation only. Never commit your real `srcs/.env` — generate fresh API keys and strong passwords for any real deployment.
 
 ---
 
@@ -317,12 +348,7 @@ lightning-mlops-stack/
 
 ## ▌License
 
-This project is licensed under the **GNU General Public License v3.0 (GPL-3.0)**.\
-You are free to use, study, share, and modify the code, provided that any distributed
-derivative work remains licensed under the GPL-3.0 and keeps its source code open.\
-The software is provided **without any warranty**.
-
-See the [LICENSE](LICENSE) file for the full text.
+MIT License.
 
 ---
 
