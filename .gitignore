@@ -36,6 +36,7 @@ srcs/services/frontend/coverage/
 srcs/services/frontend/.nyc_output/
 srcs/services/frontend/*.tsbuildinfo
 srcs/services/frontend/.env*.local
+srcs/services/frontend/.dev.vars
 srcs/services/frontend/npm-debug.log*
 srcs/services/frontend/yarn-debug.log*
 srcs/services/frontend/yarn-error.log*
