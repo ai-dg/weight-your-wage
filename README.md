@@ -168,60 +168,9 @@ Local defaults:
 
 ## ▌Configuration
 
-<<<<<<< HEAD
-Create a `srcs/.env` file. The values below are **example placeholders** — replace them with your own secrets before deploying. Generate your own API keys; never commit real ones.
+Create a `srcs/.env` file with the following variables. Replace every `...` with your own values and never commit the file.
 
 ```dotenv
-# Grafana / MLflow
-GRAFANA_PORT=3000
-ARTIFACT_ROOT="./srcs/data/artifacts"
-MLFLOW_SERVER_PORT=5000
-BACKEND_STORE_URI=postgresql+psycopg2://mlflow:mlflow@postgres:5432/mlflowdb
-
-# Configuration Fastapi
-APP_ENV=PROD
-ML_ENGINEER_API_KEY=        # generate your own — required on ML routes when APP_ENV=PROD (header: X-ML-Engineer-Key)
-GENERAL_API_KEY=            # generate your own — required on all /jobs routes (header: X-General-API-Key)
-
-# Configuration Postgres
-DB_USER=admin
-DB_PASSWORD=mysecretpassword
-DB_NAME=psql_db
-DB_PORT=5432
-DB_HOST=postgres
-
-# Config Mlflow db
-DB_MLFLOW_USER=mlflow_user
-DB_MLFLOW_PASSWORD=mlflow_password
-DB_MLFLOW_NAME=mlflow_db
-
-# Config MinIO / S3 Configuration
-MINIO_ENDPOINT=minio:9000
-MINIO_ROOT_USER=minioadmin
-MINIO_ROOT_PASSWORD=minioadmin
-MLFLOW_BUCKET_NAME=mlflow-artifacts
-AWS_ACCESS_KEY_ID=minioadmin
-AWS_SECRET_ACCESS_KEY=minioadmin
-
-# Configuration pgAdmin (web interface) + cAdvisor UI
-# Host ports — avoid 8080 if it is already in use
-CADVISOR_PORT=9080
-PGADMIN_PORT=5050
-PGADMIN_EMAIL=admin@admin.com
-PGADMIN_PASSWORD=admin_password
-
-# Configuration grafana (Mail alert)
-GF_SMTP_ENABLED=true
-GF_SMTP_HOST=smtp.gmail.com:587
-GF_SMTP_USER=your-email@gmail.com
-GF_SMTP_PASSWORD=your-password
-GF_SMTP_FROM_ADDRESS=your-email@gmail.com
-
-=======
-Create a `srcs/.env` file with the following variables:
-
-```dotenv
->>>>>>> parent of c4f6494 ([UPDATE] README and LICENSE)
 # Host user (for container file permissions)
 UID=1000
 GID=1000
@@ -240,6 +189,13 @@ DB_USER=...
 DB_PASSWORD=...
 DB_HOST=postgres
 DB_PORT=5432
+
+# MLflow (tracking server, its database and artifact bucket)
+MLFLOW_SERVER_PORT=5000
+DB_MLFLOW_USER=...
+DB_MLFLOW_PASSWORD=...
+DB_MLFLOW_NAME=...
+MLFLOW_BUCKET_NAME=...
 
 # MinIO / S3
 MINIO_ENDPOINT=minio:9000
@@ -263,6 +219,7 @@ PGADMIN_PORT=5050
 # Observability (optional ports / SMTP for Grafana alerts)
 GRAFANA_PORT=3000
 PROMETHEUS_PORT=9091
+CADVISOR_PORT=9080
 GF_SMTP_ENABLED=false
 GF_SMTP_HOST=
 GF_SMTP_USER=
@@ -348,7 +305,7 @@ lightning-mlops-stack/
 
 ## ▌License
 
-MIT License.
+GNU General Public License v3.0 — see [LICENSE](LICENSE).
 
 ---
 
